@@ -1,9 +1,9 @@
 import '@/../styles/autocomplete-mentions.scss';
 
-import { ModuleSettings, updateModuleSettings } from '@/settings/ModuleSettings';
 import { getGame, isClientGM } from '@/utils/game';
 import { log } from './utils/log';
 import moduleJson from '@module';
+import { registerForHooks } from '@/hooks';
 
 // track which modules we have
 let validSimpleCalendar = false;
@@ -18,7 +18,5 @@ Hooks.once('devModeReady', async ({ registerPackageDebugFlag: registerPackageDeb
   //CONFIG.debug.hooks = true;
 });
 
-Hooks.once('init', async () => {
-  // initialize settings first, so other things can use them
-  updateModuleSettings(new ModuleSettings());
-});
+registerForHooks();
+
