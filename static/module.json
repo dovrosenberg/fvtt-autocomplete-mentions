@@ -1,0 +1,45 @@
+{
+  "id": "autocomplete-mentions",
+  "title": "Autocomplete mentions",
+  "description": "Easily @mention actors, items, scenese, etc. from any editor box (without having to remember names.",
+
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11.315"
+  },
+
+  "esmodules": [
+    "scripts/index.js"
+  ],
+  "styles": [
+    "styles/autocomplete-mentions.css"
+  ],
+  "packs": [],
+
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+   ],
+
+  "authors": [
+    {
+      "name": "Dov Rosenberg",
+      "#discord": "",
+      "#email": "",
+      "#url": ""
+    }
+  ],
+
+  "url": "https://github.com/dovrosenberg/fvt--autocomplete-mentions",
+  "manifest": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/releases/latest/download/module.json",
+  "download": "#{DOWNLOAD}#",
+  "## version": "will be added when we build",
+
+  "license": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/LICENSE.md",
+  "readme": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/README.md",
+  "bugs": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/issues",
+  "changelog": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/CHANGELOG.md"
+}
