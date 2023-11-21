@@ -1,0 +1,77 @@
+.acm-autocomplete {
+  min-height: 25px;
+  min-width: 300px;
+  box-shadow: 0 0 5px #555555;
+  border-radius: 5px;
+  z-index:999;
+  position: absolute;
+}
+
+.acm-autocomplete .window-content {
+  padding: 3px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.acm-autocomplete ol.acm-list {
+  margin: 2px;
+  padding: 0;
+  list-style-type: none;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry {
+  background: #99999922;
+  padding: 1px 3px;
+  margin: 1px 0;
+  font-size: 0.8rem;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry.highlighted {
+  background: #55559922;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry .acm-key-prefix {
+  flex: 0;
+  opacity: 50%;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry .acm-key {
+  flex: 1 1 auto;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry .acm-key .match {
+  text-decoration: underline;
+}
+
+.acm-autocomplete ol.acm-list li.acm-data-entry .acm-value {
+  flex: 0 0 40px;
+  opacity: 50%;
+  padding: 0 3px;
+  text-align: right;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #99999955;
+}
+
+.acm-autocomplete .acm-form > :not(:last-child) {
+  margin-right: 2px;
+}
+
+.acm-autocomplete input.acm-input {
+  flex: 1;
+}
+
+.acm-autocomplete button.acm-insert {
+  flex: 0 0 25px;
+  text-align: center;
+  line-height: unset;
+  margin: 0;
+}
+
+.acm-autocomplete button.acm-insert > i {
+  margin: unset;
+}

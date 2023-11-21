@@ -1,0 +1,22 @@
+<div class="acm-autocomplete" style="left:{{location.left}}px; top:{{location.top}}px; {{#if visible}}{{else}}display:none;{{/if}}">
+    <div class="flexcol"> 
+        <ol class="acm-list">
+            <li class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
+                <span class="acm-key-prefix">samplepre</span>
+                <span class="acm-key">smpalekey</span>
+                <span class="acm-value">samplevalue</span>
+            </li>
+            {{!-- {{#each dataEntries}}
+                <li class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
+                    <span class="acm-key-prefix">{{../keyPrefix}}</span>
+                    <span class="acm-key">{{{key}}}</span>
+                    <span class="acm-value">{{value}}</span>
+                </li>
+            {{/each}} --}}
+        </ol>
+        <form class="acm-form flexrow">
+            <input class="acm-input" type="text" value="{{path}}" spellcheck="false">
+            <button type="submit" class="acm-insert"><i class="fas fa-i-cursor"></i></button>
+        </form>
+    </div>
+</div>

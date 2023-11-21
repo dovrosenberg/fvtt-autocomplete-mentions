@@ -1,8 +1,5 @@
 import '@/../styles/autocomplete-mentions.scss';
 
-import { getGame, isClientGM } from '@/utils/game';
-import { log } from './utils/log';
-import moduleJson from '@module';
 import { registerForHooks } from '@/hooks';
 
 // track which modules we have
