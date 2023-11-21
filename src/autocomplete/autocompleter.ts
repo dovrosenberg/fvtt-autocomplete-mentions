@@ -72,6 +72,7 @@ export class Autocompleter extends Application {
         singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
+        highlightedEntry: this._focusedMenuKey,
     };
     //log(false, data);
 
@@ -88,15 +89,16 @@ export class Autocompleter extends Application {
     //list.focus();
 
     // set the focus to the control
-    html.focus();
+    const wrapper = html.querySelector('#acm-wrapper') as HTMLDivElement;
+    wrapper.focus();
 
     // close everything when we leave the input
-    html.addEventListener('focusout', () => {
+    wrapper.addEventListener('focusout', () => {
       this.close();
     });
 
     // take keystrokes
-    html.addEventListener('keydown', (event) => { event.preventDefault(); })
+    wrapper.addEventListener('keydown', this._onKeydown);
 
     // for some reason, if instead of putting focus elsewhere we drag the window, focusout never gets called
     // so, we listen for pointerdown events, too (this doesn't seem super safe because foundry could change the event they use...)
@@ -157,59 +159,39 @@ export class Autocompleter extends Application {
 
 
   private _onKeydown = async (event: KeyboardEvent): Promise<void> => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    switch (event.key) {
+      case "Escape": {
+        this.close();
+        return;
+      }
+      case "ArrowUp": {
+        this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
+        this.render(false);
+        return;
+      }
+      case "ArrowDown": {
+        this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
+        this.render(false);
+        return;
+      }
+      case "Tab": {
+        // const selectedOrBestMatch = this.selectedOrBestMatch;
+        // if (!selectedOrBestMatch) {
+        //   ui.notifications.warn(`The key "${this.rawPath}" does not match any known keys.`);
+        //   this.rawPath = "";
+        // } else {
+        //   this.rawPath = this._keyWithTrailingDot(selectedOrBestMatch.key);
+        // }
+        // this.selectedCandidateIndex = null;
+        // this.render(false);
+        return;
+      }
+    }
   }
           
-  // /**
-  //  * @param {KeyboardEvent} event
-  //  * @private
-  //  */
-  // _onInputKeydown(event) {
-  //     switch (event.key) {
-  //         case "Escape": {
-  //             this.close();
-  //             return;
-  //         }
-  //         case "ArrowUp": {
-  //             event.preventDefault();
-  //             event.stopPropagation();
-  //             this.selectedCandidateIndex =
-  //                 this.sortedDataAtPath.length > 0
-  //                     ? ((this.selectedCandidateIndex ?? this.indexOfCurrentBestMatch) + 1) %
-  //                       this.sortedDataAtPath.length
-  //                     : null;
-  //             this.render(false);
-  //             return;
-  //         }
-  //         case "ArrowDown": {
-  //             event.preventDefault();
-  //             event.stopPropagation();
-  //             this.selectedCandidateIndex =
-  //                 this.sortedDataAtPath.length > 0
-  //                     ? ((this.selectedCandidateIndex ?? this.indexOfCurrentBestMatch) -
-  //                           1 +
-  //                           this.sortedDataAtPath.length) %
-  //                       this.sortedDataAtPath.length
-  //                     : null;
-  //             this.render(false);
-  //             return;
-  //         }
-  //         case "Tab": {
-  //             event.preventDefault();
-  //             event.stopPropagation();
-  //             const selectedOrBestMatch = this.selectedOrBestMatch;
-  //             if (!selectedOrBestMatch) {
-  //                 ui.notifications.warn(`The key "${this.rawPath}" does not match any known keys.`);
-  //                 this.rawPath = "";
-  //             } else {
-  //                 this.rawPath = this._keyWithTrailingDot(selectedOrBestMatch.key);
-  //             }
-  //             this.selectedCandidateIndex = null;
-  //             this.render(false);
-  //             return;
-  //         }
-  //     }
-  // }
-
   private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
     const sel = document.getSelection();
 
