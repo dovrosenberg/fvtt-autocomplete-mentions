@@ -1,5 +1,6 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
+import { DOCUMENT_TYPES } from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/constants.mjs';
 
 enum AutocompleteMode {
   singleAtWaiting,  // entered a single @ and waiting for next char to determine what type of search (this is the default when we open it)
@@ -13,12 +14,20 @@ type WindowPosition = {
   top: number;
 }
 
+const docTypes = [
+  { key: 'A', title: 'Actors' },
+  { key: 'I', title: 'Items' },
+  { key: 'J', title: 'Journal entries/pages' },
+  { key: 'R', title: 'Roll Tables' },
+  { key: 'S', title: 'Scenes' },
+];
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
   private _target: HTMLElement;    // the editor element
   private _currentMode: AutocompleteMode;
   private _location: WindowPosition;   // location of the popup
+  private _focusedMenuKey: number;
 
   constructor(target: HTMLElement, onClose: ()=>void) {
     super();
@@ -30,10 +39,7 @@ export class Autocompleter extends Application {
     this._onClose = onClose;
 
     this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
-
-    // set the focus to the @ (after it renders)
-    //focusedMenuKey = 0;
-    // window.setTimeout(() => { document.getElementById(`menu-item-${focusedMenuKey}`)?.focus(); } , 0);
+    this._focusedMenuKey = 0;
 
     this.render();
   }
@@ -62,30 +68,39 @@ export class Autocompleter extends Application {
     const data = {
         ...(await super.getData()),
         location: this._location,
+        docTypes: docTypes,
+        singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
+        docSearch: this._currentMode===AutocompleteMode.docSearch,
+        journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
     };
     //log(false, data);
 
     return data;
   }
 
-  activateListeners($html) {
+  activateListeners($html: JQuery) {
     super.activateListeners($html);
 
     const html = $html[0];
 
     // set the focus to the input box
-    const input = html.querySelector(`input.acm-input`) as HTMLInputElement;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
+    //const list = html.querySelector(`ol.acm-list`) as HTMLOListElement;
+    //list.focus();
+
+    // set the focus to the control
+    html.focus();
 
     // close everything when we leave the input
-    input.addEventListener('focusout', () => {
+    html.addEventListener('focusout', () => {
       this.close();
     });
 
+    // take keystrokes
+    html.addEventListener('keydown', (event) => { event.preventDefault(); })
+
     // for some reason, if instead of putting focus elsewhere we drag the window, focusout never gets called
     // so, we listen for pointerdown events, too (this doesn't seem super safe because foundry could change the event they use...)
-    // note for future version of foundry - make sure this still works
+    // note for future versions of foundry - make sure this still works
     const onPointerDown = (event: MouseEvent): void => { 
       if (!html.contains(event.target as Node)) {
         // we clicked outside somewhere, so clean everything up
