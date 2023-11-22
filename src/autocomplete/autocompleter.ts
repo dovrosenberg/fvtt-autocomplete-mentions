@@ -29,12 +29,12 @@ enum ValidDocTypes {
 type DocumentType = Actor | Scene | Journal | RollTable | Item;
 
 const docTypes = [
-  { key: 'A', title: 'Actors', collectionName: 'actors' },
-  { key: 'I', title: 'Items', collectionName: 'items' },
-  { key: 'J', title: 'Journal entries/pages', collectionName: 'journal' },
-  { key: 'R', title: 'Roll Tables', collectionName: 'tables' },
-  { key: 'S', title: 'Scenes', collectionName: 'scenes' },
-] as { key: ValidDocTypes, title: string, collectionName: string }[];
+  { key: 'A', title: 'Actors', collectionName: 'actors', referenceText: 'Actor' },
+  { key: 'I', title: 'Items', collectionName: 'items', referenceText: 'Item' },
+  { key: 'J', title: 'Journal entries/pages', collectionName: 'journal', referenceText: 'JournalEntry' },
+  { key: 'R', title: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable' },
+  { key: 'S', title: 'Scenes', collectionName: 'scenes', referenceText: 'Scene' },
+] as { key: ValidDocTypes, title: string, collectionName: string, referenceText: string }[];
 
 
 export class Autocompleter extends Application {
@@ -252,6 +252,7 @@ export class Autocompleter extends Application {
 
             break;
           }
+
           default:
             // ignore
             return;
@@ -268,25 +269,24 @@ export class Autocompleter extends Application {
           // handle special keys
           switch (event.key) {
             case 'Enter': {
-              // if (!this._searchDocType) return;
+              if (!this._searchDocType) return;
 
-              // // if it's null, pop up the add item dialog
-              // if (!_id) {
-              //   showAddGlobalItemDialog.value = true;
-              //   return;
-              // } else {
-              //   // get the clicked item
-              //   item = searchResults.value.find((r)=>(r._id===_id));
+              // if it's 0, pop up the add item dialog
+              if (!this._focusedMenuKey) {
+                //showAddGlobalItemDialog.value = true;
+                break;
+              } else {
+                // get the clicked item
+                const item = this._filteredSearchResults[this._focusedMenuKey-1];
 
-              //   // insert the appropriate text
-              //   if (item)
-              //     insertItemText(item?._id, item?.name);
-
-              //   // close out the menu
-              //   this.close();
-              //   return;
-              // }
-              break;
+                // insert the appropriate text
+                if (item) {
+                  const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
+                  this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+                  document.execCommand('insertText', false, `@${docType?.referenceText}[${item.name}]`);
+                }
+                break;
+              }
             }
 
             case 'Backspace': {
@@ -469,29 +469,5 @@ export class Autocompleter extends Application {
 
     return;
   }
-
-  // private _insertItemText = function(_id: string, name: string): void {
-  //   if (!editorRef.value)
-  //     return;
-
-
-  //   // insert the appropriate text
-  //   // note the space at the end to ensure the next thing we type stays outside the link (just in case)
-  //   const link = `<a href='/worlds/${itemStore.worldId}/${searchItemType.value}/${_id}' data-item-type="${searchItemType.value}">${name}</a>&nbsp;`;
-
-  //   // if there's something selected, delete it
-  //   const selection = document.getSelection();
-  //   if (selection && !selection.isCollapsed)
-  //     selection.deleteFromDocument();
-
-  //   // let the cursor position update so cursor ends after the new text
-  //   setTimeout(() => {
-  //     // you can't be in the menu in html mode, so we always insert as html
-  //     editorRef.value?.runCmd('insertHTML', link, false);
-
-  //     // let parent know value changed
-  //     emit('update:modelValue', value.value);
-  //   }, 0);
-  // }
 
 }
