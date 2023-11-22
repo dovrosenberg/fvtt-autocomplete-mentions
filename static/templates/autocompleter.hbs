@@ -26,6 +26,12 @@
             <span class="acm-key">{{{name}}}</span>
           </li>
         {{/each}}
+
+        {{#if hasMore}}
+          <li id="menu-item-more" class="acm-data-entry flexrow">
+            <span class="acm-key">...</span>
+          </li>
+        {{/if}}
       {{/if}}
       
     </ol>

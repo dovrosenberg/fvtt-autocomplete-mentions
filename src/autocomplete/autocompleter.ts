@@ -101,8 +101,9 @@ export class Autocompleter extends Application {
         highlightedEntry: this._focusedMenuKey,
         searchResults: this._filteredSearchResults,
         shownFilter: this._shownFilter,
+        hasMore: (this._lastPulledRowCount || 0) > (this._filteredSearchResults?.length || 0),
     };
-    log(false, data);
+    //log(false, data);
 
     return data;
   }
@@ -191,53 +192,13 @@ export class Autocompleter extends Application {
     event.preventDefault();
     event.stopPropagation();
 
-    // get the key of the selected item
-    const selectedKey = docTypes[this._focusedMenuKey].key;
-
-    log(false, 'down: ' + event.key);
-
-    // some keys do the same thing in every mode
-    switch (event.key) {
-      case "Escape": {
-        if (this._currentMode===AutocompleteMode.singleAtWaiting) {
-          // if we're on the first menu, then we want to insert a @ symbol
-          this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-          document.execCommand('insertText', false, '@');
-        } else {
-          // in other modes, we just close the menu without inserting, because it's more likely we just changed our mind
-          this.close();
-          return;
-        }
-        break;
-      }
-      case "ArrowUp": {
-        this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
-        break;
-      }
-      case "ArrowDown": {
-        this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
-        break;
-      }
-      case "Tab": {
-        // const selectedOrBestMatch = this.selectedOrBestMatch;
-        // if (!selectedOrBestMatch) {
-        //   ui.notifications.warn(`The key "${this.rawPath}" does not match any known keys.`);
-        //   this.rawPath = "";
-        // } else {
-        //   this.rawPath = this._keyWithTrailingDot(selectedOrBestMatch.key);
-        // }
-        // this.selectedCandidateIndex = null;
-        // this.render();
-        break;
-      }
-    }
-
     // for various other keys, it depends on the model
     switch (this._currentMode) {
       case AutocompleteMode.singleAtWaiting: {
         switch (event.key) {
           case 'Enter': {
             // select the item
+            const selectedKey = docTypes[this._focusedMenuKey].key;
             if (!selectedKey) return;
 
             // move to the next menu
@@ -248,10 +209,30 @@ export class Autocompleter extends Application {
             break;
           }
 
+          case "Escape": {
+            // if we're on the first menu, then we want to insert a @ symbol
+            this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+            document.execCommand('insertText', false, '@');
+            break;
+          }
+
           case 'Backspace': {
             // close the menu
             this.close();
             return;
+          }
+
+          case "ArrowUp": {
+            this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
+            this._searchDocType = docTypes[this._focusedMenuKey].key;
+            
+            break;
+          }
+          case "ArrowDown": {
+            this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
+            this._searchDocType = docTypes[this._focusedMenuKey].key;
+    
+            break;
           }
 
           case 'a':
@@ -266,7 +247,7 @@ export class Autocompleter extends Application {
           case 'S': {
             // finalize search mode and select the item type
             this._currentMode = AutocompleteMode.docSearch;
-            this._searchDocType = selectedKey;
+            this._searchDocType = event.key.toUpperCase() as ValidDocTypes;
             this._focusedMenuKey = 0;
 
             break;
@@ -325,6 +306,21 @@ export class Autocompleter extends Application {
               break;
             }
             
+            case "Escape": {
+              // just close the whole menu (without inserting @, because it's more likely we just changed our mind)
+              this.close();
+              return;
+            }
+
+            case "ArrowUp": {
+              this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
+              break;
+            }
+            case "ArrowDown": {
+              this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
+              break;
+            }
+
             default:
               // ignore
               return;
