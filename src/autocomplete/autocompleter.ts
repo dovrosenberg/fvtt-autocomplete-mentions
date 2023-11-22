@@ -111,10 +111,6 @@ export class Autocompleter extends Application {
 
     const html = $html[0];
 
-    // set the focus to the input box
-    //const list = html.querySelector(`ol.acm-list`) as HTMLOListElement;
-    //list.focus();
-
     // set the focus to the control
     const wrapper = html.querySelector('#acm-wrapper') as HTMLDivElement;
     wrapper.focus();
@@ -129,19 +125,16 @@ export class Autocompleter extends Application {
       menuItems[i].addEventListener('mouseover', this._onListMouseover);
     }
 
-    // close everything when we leave the input
-    wrapper.addEventListener('focusout', () => {
-      this.close();
-    });
-    
     // for some reason, if instead of putting focus elsewhere we drag the window, focusout never gets called
     // so, we listen for pointerdown events, too (this doesn't seem super safe because foundry could change the event they use...)
     // note for future versions of foundry - make sure this still works
     const onPointerDown = (event: MouseEvent): void => { 
-      if (!html.contains(event.target as Node)) {
+      // find the wrapper
+      const wrapper = document.querySelector('#acm-wrapper') as HTMLDivElement;
+      if (!wrapper.contains(event.target as Node)) {
         // we clicked outside somewhere, so clean everything up
         document.removeEventListener('pointerdown', onPointerDown);
-        this.close() 
+        this.close(); 
       }
     }
     document.addEventListener('pointerdown', onPointerDown);
@@ -216,8 +209,7 @@ export class Autocompleter extends Application {
 
           case "Escape": {
             // if we're on the first menu, then we want to insert a @ symbol
-            this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-            document.execCommand('insertText', false, '@');
+            this._insertTextAndClose('@');
             break;
           }
 
@@ -297,16 +289,14 @@ export class Autocompleter extends Application {
                   // insert the appropriate text
                   if (item) {
                     const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
-                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-                    document.execCommand('insertText', false, `@${docType?.referenceText}[${item.name}]`);
+                    this._insertTextAndClose(`@${docType?.referenceText}[${item.name}]`);
                   }
                 }
               } else {
                 // handle journal page select
                 // if it's 0, we just add a reference to the whole journal
                 if (!this._focusedMenuKey) {
-                  this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-                  document.execCommand('insertText', false, `@JournalEntry[${this._selectedJournal.name}]`);
+                  this._insertTextAndClose(`@JournalEntry[${this._selectedJournal.name}]`);
                 } else {
                   // pages have to be entered as a UUID
                   // get the clicked item
@@ -315,10 +305,7 @@ export class Autocompleter extends Application {
                   // insert the appropriate text
                   if (item) {
                     const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
-                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-                    document.execCommand('insertText', false, 
-                      `@UUID[JournalEntry.${this._selectedJournal._id}.JournalEntryPage.${item._id}]{${item.name}}`
-                    );
+                    this._insertTextAndClose(`@UUID[JournalEntry.${this._selectedJournal._id}.JournalEntryPage.${item._id}]{${item.name}}`);
                   }
                 }
               }
@@ -546,6 +533,12 @@ export class Autocompleter extends Application {
     this._shownFilter = '';
     this._focusedMenuKey = 0;
     await this._refreshSearch();
-}
+  }
+
+  private _insertTextAndClose(text: string): void {
+    this._editor.focus();  
+    document.execCommand('insertText', false, text);
+    this.close();
+  }
 
 }
