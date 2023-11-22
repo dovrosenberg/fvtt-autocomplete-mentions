@@ -122,10 +122,12 @@ export class Autocompleter extends Application {
     // take keystrokes
     wrapper.addEventListener('keydown', this._onKeydown);
 
-    // watch for clicks on menu items
+    // watch for mouseover and clicks on menu items
     const menuItems = html.querySelectorAll('.acm-data-entry') as NodeListOf<HTMLLIElement>;
-    for (let i=0; i<menuItems.length; i++) 
+    for (let i=0; i<menuItems.length; i++) {
       menuItems[i].addEventListener('click', this._onListClick);
+      menuItems[i].addEventListener('mouseover', this._onListMouseover);
+    }
 
     // close everything when we leave the input
     wrapper.addEventListener('focusout', () => {
@@ -166,14 +168,27 @@ export class Autocompleter extends Application {
   }
 
   private _onListClick = async(event: MouseEvent): Promise<void> => {
-    if (!event?.target?.parentElement)
+    if (!event?.currentTarget)
       return;
 
-    const index = event.target.parentElement.attributes['data-acm-index'].nodeValue;
+    const index = (event.currentTarget as HTMLLIElement).attributes['data-acm-index'].nodeValue;
 
     // pretend we clicked in
     this._focusedMenuKey = Number.parseInt(index);
     this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
+  }
+
+  private _onListMouseover = async(event: MouseEvent): Promise<void> => {
+    if (!event?.currentTarget)
+      return;
+
+    const index = Number.parseInt((event.currentTarget as HTMLLIElement).attributes['data-acm-index'].nodeValue);
+
+    // pretend we clicked in
+    if (this._focusedMenuKey!==index) {
+      this._focusedMenuKey = index;
+      this.render();
+    }
   }
 
 
