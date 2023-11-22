@@ -1,6 +1,8 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame } from '@/utils/game';
+import EmbeddedCollection from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/abstract/embedded-collection.mjs';
+import { JournalEntryDataConstructorData } from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/journalEntryData';
 
 enum AutocompleteMode {
   singleAtWaiting,  // entered a single @ and waiting for next char to determine what type of search (this is the default when we open it)
@@ -15,7 +17,9 @@ type WindowPosition = {
 }
 
 type SearchResult = {
+  _id: string;   
   name: string;
+  pages: EmbeddedCollection<any, any> | null;
 }
 
 enum ValidDocTypes {
@@ -28,13 +32,17 @@ enum ValidDocTypes {
 
 type DocumentType = Actor | Scene | Journal | RollTable | Item;
 
+// key and title show in the menu to pick a type
+// searchName shows in the search screen ("Searching ___ for: ")
+// collectionName is the foundry collection
+// referenceText is the text inserted into the editor @___[name]
 const docTypes = [
-  { key: 'A', title: 'Actors', collectionName: 'actors', referenceText: 'Actor' },
-  { key: 'I', title: 'Items', collectionName: 'items', referenceText: 'Item' },
-  { key: 'J', title: 'Journal entries/pages', collectionName: 'journal', referenceText: 'JournalEntry' },
-  { key: 'R', title: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable' },
-  { key: 'S', title: 'Scenes', collectionName: 'scenes', referenceText: 'Scene' },
-] as { key: ValidDocTypes, title: string, collectionName: string, referenceText: string }[];
+  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor' },
+  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item' },
+  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry' },
+  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable' },
+  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene' },
+] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string }[];
 
 
 export class Autocompleter extends Application {
@@ -50,6 +58,7 @@ export class Autocompleter extends Application {
   private _lastPulledType: ValidDocTypes | null;     // the key of the doctype we last searched the database for
   private _lastPulledRowCount: number;   // the number of rows the last query returned
   private _filteredSearchResults: SearchResult[];   // the currently shown search results
+  private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
 
   constructor(target: HTMLElement, onClose: ()=>void) {
     super();
@@ -98,6 +107,8 @@ export class Autocompleter extends Application {
         singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
+        journalName: this._selectedJournal?.name,
+        docType: docTypes.find((dt)=>(dt.key===this._searchDocType))?.searchName,
         highlightedEntry: this._focusedMenuKey,
         searchResults: this._filteredSearchResults,
         shownFilter: this._shownFilter,
@@ -192,6 +203,8 @@ export class Autocompleter extends Application {
     event.preventDefault();
     event.stopPropagation();
 
+    console.log(event.key);
+    
     // for various other keys, it depends on the model
     switch (this._currentMode) {
       case AutocompleteMode.singleAtWaiting: {
@@ -248,7 +261,9 @@ export class Autocompleter extends Application {
             // finalize search mode and select the item type
             this._currentMode = AutocompleteMode.docSearch;
             this._searchDocType = event.key.toUpperCase() as ValidDocTypes;
-            this._focusedMenuKey = 0;
+            this._shownFilter = '';
+            this._focusedMenuKey = 0;  // 0 is the "create" item
+            await this._refreshSearch();
 
             break;
           }
@@ -259,7 +274,9 @@ export class Autocompleter extends Application {
         }
         break;
       }
-      case AutocompleteMode.docSearch: {
+
+      case AutocompleteMode.docSearch: 
+      case AutocompleteMode.journalPageSearch: {
         // if it's a regular character, update the filter string
         if (event.key.length===1) {
           this._shownFilter += event.key;
@@ -269,37 +286,81 @@ export class Autocompleter extends Application {
           // handle special keys
           switch (event.key) {
             case 'Enter': {
-              if (!this._searchDocType) return;
+              if (this._currentMode===AutocompleteMode.docSearch) {
+                if (!this._searchDocType) return;
 
-              // if it's 0, pop up the add item dialog
-              if (!this._focusedMenuKey) {
-                //showAddGlobalItemDialog.value = true;
-                break;
-              } else {
-                // get the clicked item
-                const item = this._filteredSearchResults[this._focusedMenuKey-1];
+                // if it's 0, pop up the add item dialog
+                if (!this._focusedMenuKey) {
+                  //showAddGlobalItemDialog.value = true;
+                } else if (this._searchDocType==='J') {
+                  // for journal, we have to go into journal mode
+                  this._currentMode = AutocompleteMode.journalPageSearch;
 
-                // insert the appropriate text
-                if (item) {
-                  const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
-                  this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-                  document.execCommand('insertText', false, `@${docType?.referenceText}[${item.name}]`);
+                  // get the clicked journal
+                  const journal = this._filteredSearchResults[this._focusedMenuKey-1];
+                  this._selectedJournal = { name: journal.name, pages: journal.pages, _id: journal._id };
+
+                  // reset search
+                  this._shownFilter = '';
+                  this._focusedMenuKey = 0;   // use whole journal
+                  await this._refreshSearch();
+                } else {
+                  // get the clicked item
+                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
+
+                  // insert the appropriate text
+                  if (item) {
+                    const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
+                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+                    document.execCommand('insertText', false, `@${docType?.referenceText}[${item.name}]`);
+                  }
                 }
-                break;
+              } else {
+                // handle journal page select
+                // if it's 0, we just add a reference to the whole journal
+                if (!this._focusedMenuKey) {
+                  // get the clicked item
+                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
+
+                  // insert the appropriate text
+                  if (item) {
+                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+                    document.execCommand('insertText', false, `@JournalEntry[${this._selectedJournal.name}]`);
+                  }
+                } else {
+                  // pages have to be entered as a UUID
+                  // get the clicked item
+                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
+
+                  // insert the appropriate text
+                  if (item) {
+                    const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
+                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+                    document.execCommand('insertText', false, 
+                      `@UUID[JournalEntry.${this._selectedJournal._id}.JournalEntryPage.${item._id}]{${item.name}}`
+                    );
+                  }
+                }
               }
+              break;
             }
 
             case 'Backspace': {
               // if the shownfilter is empty, go back to singleAtWaiting mode
               if (this._shownFilter.length === 0) {
-                this._currentMode = AutocompleteMode.singleAtWaiting;
+                if (this._currentMode===AutocompleteMode.docSearch) {
+                  this._currentMode = AutocompleteMode.singleAtWaiting;
+                } else {
+                  // journal search
+                  this._currentMode = AutocompleteMode.docSearch;
+                  this._shownFilter = '';
+                  await this._refreshSearch();
+                }
                 this._focusedMenuKey = 0;
               } else {
                 // otherwise delete a character
                 this._shownFilter = this._shownFilter.slice(0, -1);
-
                 await this._refreshSearch();
-
                 this._focusedMenuKey = 0;
               }
 
@@ -313,11 +374,11 @@ export class Autocompleter extends Application {
             }
 
             case "ArrowUp": {
-              this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
+              this._focusedMenuKey = (this._focusedMenuKey - 1 + this._filteredSearchResults.length+1) % (this._filteredSearchResults.length+1);
               break;
             }
             case "ArrowDown": {
-              this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
+              this._focusedMenuKey = (this._focusedMenuKey + 1) % (this._filteredSearchResults.length+1);
               break;
             }
 
@@ -329,14 +390,11 @@ export class Autocompleter extends Application {
 
         break;
       }
-      case AutocompleteMode.journalPageSearch: {
-        break;
-      }
       default: 
         return;
     }
 
-    this.render();
+    await this.render();
   }
           
   private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
@@ -401,21 +459,16 @@ export class Autocompleter extends Application {
     const FULL_TEXT_SEARCH = true; //TODO: pull from settings
     const MAX_ROWS = 5;  // TODO: pull from settings
 
-    if (!this._shownFilter) {
-      this._filteredSearchResults = [];
-      this._lastPulledSearchResults = [];
-      this._lastPulledRowCount = 0;
-      this._lastPulledFilter = '';
-      this._lastPulledType = this._searchDocType;
-      return;
-    }
-
     if (FULL_TEXT_SEARCH || (this._lastPulledType !== this._searchDocType) ||
         (!this._lastPulledFilter || !this._shownfilter.toLowerCase().startsWith(this._lastPulledFilter.toLowerCase()))) {
       // we need to refresh
       // clear the current results so they don't show while we're waiting
       this._filteredSearchResults = [];
-      await this._pullData();
+
+      if (this._currentMode===AutocompleteMode.journalPageSearch)
+        await this._pullJournalData();
+      else  
+        await this._pullData();
     }
 
     // if there's at least one result, select it  
@@ -423,17 +476,18 @@ export class Autocompleter extends Application {
     if (this._filteredSearchResults.length >=1) {
       this._focusedMenuKey = 1;
     } else {
-      // select create option
+      // select create/whole journal option
       this._focusedMenuKey = 0;
     }
   }
 
   // pull the new data from the database
-  private async _pullData<T extends Actors | Items | Journal | RollTables | Scenes>(): Promise<void> {
+  private async _pullData(): Promise<void> {
     if (!this._searchDocType) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
       this._lastPulledSearchResults = [];
+      this._lastPulledRowCount = 0;
       return;
     }
 
@@ -448,7 +502,7 @@ export class Autocompleter extends Application {
       return;
     }
 
-    const collection = getGame()[docType.collectionName] as T;
+    const collection = getGame()[docType.collectionName] as DocumentType;
 
     // note that current typescript definitions don't know about search() function
     let results: DocumentType[];
@@ -465,7 +519,46 @@ export class Autocompleter extends Application {
     results = results.filter((item)=>(item.name));
 
     this._lastPulledRowCount = results.length;
-    this._lastPulledSearchResults = results.map((item)=>({name: item.name})) as SearchResult[];
+
+    // id and pages are OK here despite typescript
+    this._lastPulledSearchResults = results.map((item)=>({_id: item.id, name: item.name, pages: this._searchDocType==='J' ? item.pages : undefined})) as SearchResult[];  
+    return;
+  }
+
+  private async _pullJournalData(): Promise<void> {
+    if (this._currentMode!==AutocompleteMode.journalPageSearch) {
+      this._lastPulledFilter = '';
+      this._lastPulledType = null;
+      this._lastPulledSearchResults = [];
+      this._lastPulledRowCount = 0;
+      return;
+    }
+
+    this._lastPulledFilter = this._shownFilter;
+    this._lastPulledType = null;  
+
+    const collection = this._selectedJournal.pages;
+    if (!collection)
+      return;
+
+    // note that current typescript definitions don't know about search() function
+    let results: DocumentType[];
+    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings
+    const RESULT_LENGTH = 5;  // TODO: pull from settings
+    if (FULL_TEXT_SEARCH) {
+      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
+    } else {
+      results=[];
+      //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
+    }
+
+    // remove any null names (which Foundry allows)
+    results = results.filter((item)=>(item.name));
+
+    this._lastPulledRowCount = results.length;
+
+    // id ok here despite typescript
+    this._lastPulledSearchResults = results.map((item)=>({_id: item.id, name: item.name, pages: null})) as SearchResult[];
 
     return;
   }

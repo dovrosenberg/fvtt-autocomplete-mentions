@@ -1,44 +1,56 @@
 <div class="acm-autocomplete" style="left:{{location.left}}px; top:{{location.top}}px;">
   <div id ="acm-wrapper" tabindex="-1" >
-  <div class="flexcol"> 
-    <ol class="acm-list">
+    <div class="flexcol"> 
+      <ol class="acm-list">
 
-      {{#if singleAtWaiting}}
-        <li class="acm-data-entry flexrow">
-          Search/add...
-        </li>
-        <li><hr></li> 
-
-        {{#each docTypes}}
-          <li id="menu-item-{{key}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
-            <span class="acm-key-prefix">{{key}}:&nbsp;</span>
-            <span class="acm-key">{{title}}</span>
+        {{#if singleAtWaiting}}
+          <li class="acm-data-entry flexrow">
+            Search/add...
           </li>
-        {{/each}}
-      {{else if docSearch}}
-        <li class="acm-data-entry flexrow{{#if (eq 0 ../highlightedEntry)}} highlighted{{/if}}">
-          Searching for '{{ shownFilter }}'
-        </li>
-        <li><hr></li> 
+          <li><hr></li> 
 
-        {{#each searchResults}}
-          <li id="menu-item-{{acm-add @index 1}}" class="acm-data-entry flexrow{{#if (eq (acm-add @index 1) ../highlightedEntry)}} highlighted{{/if}}">
-            <span class="acm-key">{{{name}}}</span>
-          </li>
-        {{/each}}
+          {{#each docTypes}}
+            <li id="menu-item-{{key}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
+              <span class="acm-key-prefix">{{key}}:&nbsp;</span>
+              <span class="acm-key">{{title}}</span>
+            </li>
+          {{/each}}
+        {{else if (or docSearch journalPageSearch)}}
+          {{#if journalPageSearch}}
+            <li class="acm-data-entry flexrow">
+              {{journalName}}
+            </li>
+            <li class="acm-data-entry flexrow">
+              Searching pages for '{{shownFilter}}'
+            </li>
+            <li><hr></li> 
+            <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}">
+              Link whole journal entry
+            </li>
+          {{else}}
+            <li class="acm-data-entry flexrow">
+              Searching {{docType}} for '{{shownFilter}}'
+            </li>
+            <li><hr></li> 
+            <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}">
+              Create new...
+            </li>
+          {{/if}}
 
-        {{#if hasMore}}
-          <li id="menu-item-more" class="acm-data-entry flexrow">
-            <span class="acm-key">...</span>
-          </li>
+          {{#each searchResults}}
+            <li id="menu-item-{{acm-add @index 1}}" class="acm-data-entry flexrow{{#if (eq (acm-add @index 1) ../highlightedEntry)}} highlighted{{/if}}">
+              <span class="acm-key">{{{name}}}</span>
+            </li>
+          {{/each}}
+
+          {{#if hasMore}}
+            <li id="menu-item-more" class="acm-data-entry flexrow">
+              <span class="acm-key">...</span>
+            </li>
+          {{/if}}
         {{/if}}
-      {{/if}}
-      
-    </ol>
-<!--    <form class="acm-form flexrow">
-      <input class="acm-input" type="text" value="{{path}}" spellcheck="false">
-      <button type="submit" class="acm-insert"><i class="fas fa-i-cursor"></i></button>
-    </form>-->
-  </div>
+        
+      </ol>
+    </div>
   </div>
 </div>
