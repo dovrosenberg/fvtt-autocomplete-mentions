@@ -319,14 +319,8 @@ export class Autocompleter extends Application {
                 // handle journal page select
                 // if it's 0, we just add a reference to the whole journal
                 if (!this._focusedMenuKey) {
-                  // get the clicked item
-                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
-
-                  // insert the appropriate text
-                  if (item) {
-                    this._editor.focus();  // note that this will automatically trigger closing the menu, as well
-                    document.execCommand('insertText', false, `@JournalEntry[${this._selectedJournal.name}]`);
-                  }
+                  this._editor.focus();  // note that this will automatically trigger closing the menu, as well
+                  document.execCommand('insertText', false, `@JournalEntry[${this._selectedJournal.name}]`);
                 } else {
                   // pages have to be entered as a UUID
                   // get the clicked item
