@@ -20,7 +20,7 @@
   flex-direction: column;
 }
 
-.acm-autocomplete ol.acm-list li.acm-data-entry {
+.acm-autocomplete ol.acm-list li.acm-data-entry, .acm-autocomplete ol.acm-list li.acm-static-entry {
   //background: #99999922;
   padding: 1px 3px;
   margin: 1px 0;

@@ -1,36 +1,19 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame } from '@/utils/game';
-import EmbeddedCollection from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/abstract/embedded-collection.mjs';
-import { JournalEntryDataConstructorData } from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/journalEntryData';
+import { DocumentType, ValidDocTypes, WindowPosition, SearchResult, AutocompleteMode } from '@/types';
 
-enum AutocompleteMode {
-  singleAtWaiting,  // entered a single @ and waiting for next char to determine what type of search (this is the default when we open it)
-  docSearch, // entered a single @ plus a valid document search type
-  journalPageSearch,  // entered a single @, picked journal type, selected a journal, and are now picking pages
-}
+  /* so here's the flow...
+      press @
+      Get a menu of Actors, JournalEntries (which will then offer link to parent or pick a page), Items, Scenes, Roll Table
+      Press the 1st letter of what you want
+      Have an option to create a new one (???) + options for 1st n choices
+      As you type more letters, choices filter down
 
-// we can't use foundry's setPosition() because it doesn't work for fixed size, non popout windows
-type WindowPosition = {
-  left: number;
-  top: number;
-}
+      note: if you pick journalentries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
+          then filter like the document choices)
+  */
 
-type SearchResult = {
-  _id: string;   
-  name: string;
-  pages: EmbeddedCollection<any, any> | null;
-}
-
-enum ValidDocTypes {
-  A = 'A',
-  I = 'I',
-  J = 'J',
-  R = 'R',
-  S = 'S'
-}
-
-type DocumentType = Actor | Scene | Journal | RollTable | Item;
 
 // key and title show in the menu to pick a type
 // searchName shows in the search screen ("Searching ___ for: ")
@@ -132,14 +115,19 @@ export class Autocompleter extends Application {
     const wrapper = html.querySelector('#acm-wrapper') as HTMLDivElement;
     wrapper.focus();
 
+    // take keystrokes
+    wrapper.addEventListener('keydown', this._onKeydown);
+
+    // watch for clicks on menu items
+    const menuItems = html.querySelectorAll('.acm-data-entry') as NodeListOf<HTMLLIElement>;
+    for (let i=0; i<menuItems.length; i++) 
+      menuItems[i].addEventListener('click', this._onListClick);
+
     // close everything when we leave the input
     wrapper.addEventListener('focusout', () => {
       this.close();
     });
-
-    // take keystrokes
-    wrapper.addEventListener('keydown', this._onKeydown);
-
+    
     // for some reason, if instead of putting focus elsewhere we drag the window, focusout never gets called
     // so, we listen for pointerdown events, too (this doesn't seem super safe because foundry could change the event they use...)
     // note for future versions of foundry - make sure this still works
@@ -175,27 +163,19 @@ export class Autocompleter extends Application {
     return super.close(options);
   }
 
-  // /**
-  //  * @private
-  //  */
-  // _onInputChanged() {
-  //     const input = this.inputElement;
-  //     this.rawPath = input.value;
-  //     this.selectedCandidateIndex = null;
-  //     this.render();
-  // }
 
+  private _onListClick = async(event: MouseEvent): Promise<void> => {
+    if (!event?.target?.parentElement)
+      return;
 
-  /* so here's the flow...
-      press @
-      Get a menu of Actors, JournalEntries (which will then offer link to parent or pick a page), Items, Scenes, Roll Table
-      Press the 1st letter of what you want
-      Have an option to create a new one (???) + options for 1st n choices
-      As you type more letters, choices filter down
+    const index = event.target.parentElement.attributes['data-acm-index'].nodeValue;
 
-      note: if you pick journalentries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
-          then filter like the document choices)
-  */
+    // pretend we clicked in
+    this._focusedMenuKey = Number.parseInt(index);
+    if (this._currentMode===AutocompleteMode.singleAtWaiting)
+      this._searchDocType = docTypes[this._focusedMenuKey].key;
+    this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
+  }
 
 
   // we render at the end, so can return for cases that don't require it to save that step
