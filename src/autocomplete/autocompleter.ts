@@ -1,5 +1,6 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
+import { getGame } from '@/utils/game';
 
 enum AutocompleteMode {
   singleAtWaiting,  // entered a single @ and waiting for next char to determine what type of search (this is the default when we open it)
@@ -13,13 +14,28 @@ type WindowPosition = {
   top: number;
 }
 
+type SearchResult = {
+  name: string;
+}
+
+enum ValidDocTypes {
+  A = 'A',
+  I = 'I',
+  J = 'J',
+  R = 'R',
+  S = 'S'
+}
+
+type DocumentType = Actor | Scene | Journal | RollTable | Item;
+
 const docTypes = [
-  { key: 'A', title: 'Actors' },
-  { key: 'I', title: 'Items' },
-  { key: 'J', title: 'Journal entries/pages' },
-  { key: 'R', title: 'Roll Tables' },
-  { key: 'S', title: 'Scenes' },
-];
+  { key: 'A', title: 'Actors', collectionName: 'actors' },
+  { key: 'I', title: 'Items', collectionName: 'items' },
+  { key: 'J', title: 'Journal entries/pages', collectionName: 'journal' },
+  { key: 'R', title: 'Roll Tables', collectionName: 'tables' },
+  { key: 'S', title: 'Scenes', collectionName: 'scenes' },
+] as { key: ValidDocTypes, title: string, collectionName: string }[];
+
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
@@ -27,8 +43,13 @@ export class Autocompleter extends Application {
   private _currentMode: AutocompleteMode;
   private _location: WindowPosition;   // location of the popup
   private _focusedMenuKey: number;
-  private _searchDocType: string;   // if we're in doc search mode, the key of the docType to search
+  private _searchDocType: ValidDocTypes | null;   // if we're in doc search mode, the key of the docType to search
   private _shownFilter: string;    // current filter for doc search
+  private _lastPulledSearchResults: SearchResult[];  // all of the results we got back last time
+  private _lastPulledFilter: string;      // the filter we last searched the database for
+  private _lastPulledType: ValidDocTypes | null;     // the key of the doctype we last searched the database for
+  private _lastPulledRowCount: number;   // the number of rows the last query returned
+  private _filteredSearchResults: SearchResult[];   // the currently shown search results
 
   constructor(target: HTMLElement, onClose: ()=>void) {
     super();
@@ -41,6 +62,10 @@ export class Autocompleter extends Application {
 
     this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
     this._focusedMenuKey = 0;
+
+    this._searchDocType = null;
+    this._shownFilter = '';
+    this._lastPulledSearchResults=[];
 
     this.render();
   }
@@ -74,8 +99,10 @@ export class Autocompleter extends Application {
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
         highlightedEntry: this._focusedMenuKey,
+        searchResults: this._filteredSearchResults,
+        shownFilter: this._shownFilter,
     };
-    //log(false, data);
+    log(false, data);
 
     return data;
   }
@@ -159,12 +186,15 @@ export class Autocompleter extends Application {
   */
 
 
+  // we render at the end, so can return for cases that don't require it to save that step
   private _onKeydown = async (event: KeyboardEvent): Promise<void> => {
     event.preventDefault();
     event.stopPropagation();
 
     // get the key of the selected item
-    const selectedKey = ____.toUpperCase();
+    const selectedKey = docTypes[this._focusedMenuKey].key;
+
+    log(false, 'down: ' + event.key);
 
     // some keys do the same thing in every mode
     switch (event.key) {
@@ -176,18 +206,17 @@ export class Autocompleter extends Application {
         } else {
           // in other modes, we just close the menu without inserting, because it's more likely we just changed our mind
           this.close();
+          return;
         }
-        return;
+        break;
       }
       case "ArrowUp": {
         this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
-        this.render();
-        return;
+        break;
       }
       case "ArrowDown": {
         this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
-        this.render();
-        return;
+        break;
       }
       case "Tab": {
         // const selectedOrBestMatch = this.selectedOrBestMatch;
@@ -199,7 +228,7 @@ export class Autocompleter extends Application {
         // }
         // this.selectedCandidateIndex = null;
         // this.render();
-        return;
+        break;
       }
     }
 
@@ -207,7 +236,7 @@ export class Autocompleter extends Application {
     switch (this._currentMode) {
       case AutocompleteMode.singleAtWaiting: {
         switch (event.key) {
-          case 'Enter':
+          case 'Enter': {
             // select the item
             if (!selectedKey) return;
 
@@ -216,14 +245,14 @@ export class Autocompleter extends Application {
             this._searchDocType = selectedKey;
             this._focusedMenuKey = 0;
 
-            this.render();
+            break;
+          }
 
-            return;
-
-          case 'Backspace':
+          case 'Backspace': {
             // close the menu
             this.close();
             return;
+          }
 
           case 'a':
           case 'A':
@@ -234,18 +263,17 @@ export class Autocompleter extends Application {
           case 'r':
           case 'R':
           case 's':
-          case 'S':
+          case 'S': {
             // finalize search mode and select the item type
             this._currentMode = AutocompleteMode.docSearch;
             this._searchDocType = selectedKey;
             this._focusedMenuKey = 0;
 
-            this.render();
-            return;
-
+            break;
+          }
           default:
             // ignore
-            break;
+            return;
         }
         break;
       }
@@ -254,69 +282,65 @@ export class Autocompleter extends Application {
         if (event.key.length===1) {
           this._shownFilter += event.key;
 
-          await this._checkRefresh();
+          await this._refreshSearch();
+        } else {
+          // handle special keys
+          switch (event.key) {
+            case 'Enter': {
+              // if (!this._searchDocType) return;
 
-          return;
-        } 
+              // // if it's null, pop up the add item dialog
+              // if (!_id) {
+              //   showAddGlobalItemDialog.value = true;
+              //   return;
+              // } else {
+              //   // get the clicked item
+              //   item = searchResults.value.find((r)=>(r._id===_id));
 
-        // handle special keys
-        switch (event.key) {
-          case 'Enter': {
-            // if (!this._searchDocType) return;
+              //   // insert the appropriate text
+              //   if (item)
+              //     insertItemText(item?._id, item?.name);
 
-            // // if it's null, pop up the add item dialog
-            // if (!_id) {
-            //   showAddGlobalItemDialog.value = true;
-            //   return;
-            // } else {
-            //   // get the clicked item
-            //   item = searchResults.value.find((r)=>(r._id===_id));
-
-            //   // insert the appropriate text
-            //   if (item)
-            //     insertItemText(item?._id, item?.name);
-
-            //   // close out the menu
-            //   this.close();
-            //   return;
-            // }
-            break;
-          }
-
-          case 'Backspace':
-            // if the shownfilter is empty, go back to singleAtWaiting mode
-            if (this._shownFilter.length === 0) {
-              this._currentMode = AutocompleteMode.singleAtWaiting;
-              this._focusedMenuKey = 0;
-
-              this.render();
-
-              return;
-            } else {
-              // otherwise delete a character
-              this._shownFilter = this._shownFilter.slice(0, -1);
-
-              await this._checkRefresh();
-
-              this._focusedMenuKey = 0;
-
-              this.render();
-
-              return;
+              //   // close out the menu
+              //   this.close();
+              //   return;
+              // }
+              break;
             }
-          
-          default:
-            // ignore
-            break;
+
+            case 'Backspace': {
+              // if the shownfilter is empty, go back to singleAtWaiting mode
+              if (this._shownFilter.length === 0) {
+                this._currentMode = AutocompleteMode.singleAtWaiting;
+                this._focusedMenuKey = 0;
+              } else {
+                // otherwise delete a character
+                this._shownFilter = this._shownFilter.slice(0, -1);
+
+                await this._refreshSearch();
+
+                this._focusedMenuKey = 0;
+              }
+
+              break;
+            }
+            
+            default:
+              // ignore
+              return;
+          }
         }
+
         break;
       }
       case AutocompleteMode.journalPageSearch: {
         break;
       }
       default: 
-        break;
+        return;
     }
+
+    this.render();
   }
           
   private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
@@ -353,34 +377,125 @@ export class Autocompleter extends Application {
     return { left: rect.left + paddingLeft, top: rect.top + paddingTop }
   }
 
-  WORK ON THIS NEXT
+  // _lastPulledSearchResults contains the full set of what we got back last time we pulled
+  private _getFilteredSearchResults(): SearchResult[] {
+    const FULL_TEXT_SEARCH = true; // TODO
+    const RESULT_LENGTH = 5;  // TODO
+
+    let retval: SearchResult[];
+
+    if (FULL_TEXT_SEARCH) { // TODO
+      retval = this._lastPulledSearchResults;  // we don't know enough to filter any more (other than length)
+    } else {
+      retval = this._lastPulledSearchResults.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
+    }
+
+    return retval.slice(0, RESULT_LENGTH);  
+  }
+
+  // refresh the search results, if needed
   // has the filter changed in a way that we need to refresh the search results?
   // we only refresh the results if a) the active filter isn't an extension of the last searched one or
   //    b) the last search told us there were more rows than we pulled for the prior search
-  // this is written as an async function that tracks what we've pulled from the server/database so that we can minimize unneeded pulls
-  // for now, though, we're just reading everything in 
-  private _checkRefresh = async function(): Promise<void> {
-    // if it's a different type than we pulled last time, we need to refresh
-    // if the current filter is an extension of the last one and we have all the rows, we don't need to refresh
-    // also if there isn't a lastPulledFilter, we need to refresh
-    if ((lastPulledType === searchItemType.value) &&
-        (lastPulledFilter && shownfilter.value.toLowerCase().startsWith(lastPulledFilter.toLowerCase()) && (lastPulledRowCount <= searchResults.value.length)))
+  private _refreshSearch = async function(): Promise<void> {
+    // when do we NOT need to refresh the main search results?
+    //   * we're not using full text (because we don't have a way to further filter here)
+    //   * we're searching the same type we did last time
+    //   * the new search results are a subset of the old ones - meaning the new filter starts with the old filter 
+    const FULL_TEXT_SEARCH = true; //TODO: pull from settings
+    const MAX_ROWS = 5;  // TODO: pull from settings
+
+    if (!this._shownFilter) {
+      this._filteredSearchResults = [];
+      this._lastPulledSearchResults = [];
+      this._lastPulledRowCount = 0;
+      this._lastPulledFilter = '';
+      this._lastPulledType = this._searchDocType;
       return;
+    }
 
-    // otherwise, we need to refresh
-    // clear the current results so they don't show while we're waiting
-    searchResults.value = [];
-    await pullData();
+    if (FULL_TEXT_SEARCH || (this._lastPulledType !== this._searchDocType) ||
+        (!this._lastPulledFilter || !this._shownfilter.toLowerCase().startsWith(this._lastPulledFilter.toLowerCase()))) {
+      // we need to refresh
+      // clear the current results so they don't show while we're waiting
+      this._filteredSearchResults = [];
+      await this._pullData();
+    }
 
-    // if there's at least one result, select it
-    if (searchResults.value.filter((i)=>(i.name.toLowerCase().includes(shownfilter.value.toLowerCase()))).length >= 1) {
-      focusedMenuKey = 1;
-      window.setTimeout(() => { document.getElementById(`menu-item-${focusedMenuKey}`)?.focus(); } , 0);
+    // if there's at least one result, select it  
+    this._filteredSearchResults = this._getFilteredSearchResults();
+    if (this._filteredSearchResults.length >=1) {
+      this._focusedMenuKey = 1;
     } else {
       // select create option
-      focusedMenuKey = 0;
-      window.setTimeout(() => { document.getElementById(`menu-item-${focusedMenuKey}`)?.focus(); } , 0);
+      this._focusedMenuKey = 0;
     }
   }
+
+  // pull the new data from the database
+  private async _pullData<T extends Actors | Items | Journal | RollTables | Scenes>(): Promise<void> {
+    if (!this._searchDocType) {
+      this._lastPulledFilter = '';
+      this._lastPulledType = null;
+      this._lastPulledSearchResults = [];
+      return;
+    }
+
+    this._lastPulledFilter = this._shownFilter;
+    this._lastPulledType = this._searchDocType;  
+
+    const docType = docTypes.find((d)=>(d.key===this._searchDocType));
+    if (!docType?.collectionName) {
+      this._lastPulledFilter = '';
+      this._lastPulledType = null;
+      this._lastPulledSearchResults = [];
+      return;
+    }
+
+    const collection = getGame()[docType.collectionName] as T;
+
+    // note that current typescript definitions don't know about search() function
+    let results: DocumentType[];
+    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings
+    const RESULT_LENGTH = 5;  // TODO: pull from settings
+    if (FULL_TEXT_SEARCH) {
+      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
+    } else {
+      results=[];
+      //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
+    }
+
+    // remove any null names (which Foundry allows)
+    results = results.filter((item)=>(item.name));
+
+    this._lastPulledRowCount = results.length;
+    this._lastPulledSearchResults = results.map((item)=>({name: item.name})) as SearchResult[];
+
+    return;
+  }
+
+  // private _insertItemText = function(_id: string, name: string): void {
+  //   if (!editorRef.value)
+  //     return;
+
+
+  //   // insert the appropriate text
+  //   // note the space at the end to ensure the next thing we type stays outside the link (just in case)
+  //   const link = `<a href='/worlds/${itemStore.worldId}/${searchItemType.value}/${_id}' data-item-type="${searchItemType.value}">${name}</a>&nbsp;`;
+
+  //   // if there's something selected, delete it
+  //   const selection = document.getSelection();
+  //   if (selection && !selection.isCollapsed)
+  //     selection.deleteFromDocument();
+
+  //   // let the cursor position update so cursor ends after the new text
+  //   setTimeout(() => {
+  //     // you can't be in the menu in html mode, so we always insert as html
+  //     editorRef.value?.runCmd('insertHTML', link, false);
+
+  //     // let parent know value changed
+  //     emit('update:modelValue', value.value);
+  //   }, 0);
+  // }
 
 }

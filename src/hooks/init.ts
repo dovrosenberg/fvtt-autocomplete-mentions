@@ -4,7 +4,7 @@ import { ModuleSettings, updateModuleSettings } from '@/settings/ModuleSettings'
 let autocompleter = null as Autocompleter | null;
 
 export function registerForInitHook() {
-  Hooks.once("init", init);
+  Hooks.once('init', init);
 }
 
 async function init(): Promise<void> {
@@ -14,6 +14,7 @@ async function init(): Promise<void> {
   registerListener();
 }
 
+// register the main listener
 function registerListener() {
   jQuery(document).on('keydown', '.ProseMirror.editor-content[contenteditable="true"]', onKeydown);
 }

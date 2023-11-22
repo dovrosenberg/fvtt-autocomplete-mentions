@@ -10,20 +10,20 @@
         <li><hr></li> 
 
         {{#each docTypes}}
-          <li id="menu-item-{{@index}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
+          <li id="menu-item-{{key}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
             <span class="acm-key-prefix">{{key}}:&nbsp;</span>
             <span class="acm-key">{{title}}</span>
           </li>
         {{/each}}
       {{else if docSearch}}
-        <li class="acm-data-entry flexrow">
+        <li class="acm-data-entry flexrow{{#if (eq 0 ../highlightedEntry)}} highlighted{{/if}}">
           Searching for '{{ shownFilter }}'
         </li>
         <li><hr></li> 
 
-        {{#each }}
-          <li id="menu-item-{{@index}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}">
-            <span class="acm-key">{{{title}}}</span>
+        {{#each searchResults}}
+          <li id="menu-item-{{acm-add @index 1}}" class="acm-data-entry flexrow{{#if (eq (acm-add @index 1) ../highlightedEntry)}} highlighted{{/if}}">
+            <span class="acm-key">{{{name}}}</span>
           </li>
         {{/each}}
       {{/if}}
