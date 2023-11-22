@@ -1,17 +1,15 @@
 .acm-autocomplete {
+  background: #ffffff;
   min-height: 25px;
   min-width: 300px;
   box-shadow: 0 0 5px #555555;
   border-radius: 5px;
   z-index:999;
   position: absolute;
-  outline: 0;
 }
 
-.acm-autocomplete .window-content {
-  padding: 3px;
-  border-radius: 5px;
-  overflow: hidden;
+.acm-autocomplete #acm-wrapper {
+  outline: none;
 }
 
 .acm-autocomplete ol.acm-list {
@@ -23,7 +21,7 @@
 }
 
 .acm-autocomplete ol.acm-list li.acm-data-entry {
-  background: #99999922;
+  //background: #99999922;
   padding: 1px 3px;
   margin: 1px 0;
   font-size: 0.8rem;
@@ -55,24 +53,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: #99999955;
+  //background: #99999955;
 }
 
 .acm-autocomplete .acm-form > :not(:last-child) {
   margin-right: 2px;
-}
-
-.acm-autocomplete input.acm-input {
-  flex: 1;
-}
-
-.acm-autocomplete button.acm-insert {
-  flex: 0 0 25px;
-  text-align: center;
-  line-height: unset;
-  margin: 0;
-}
-
-.acm-autocomplete button.acm-insert > i {
-  margin: unset;
 }
