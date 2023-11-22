@@ -2,6 +2,7 @@ import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame } from '@/utils/game';
 import { DocumentType, ValidDocTypes, WindowPosition, SearchResult, AutocompleteMode } from '@/types';
+import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
   /* so here's the flow...
       press @
@@ -30,18 +31,22 @@ const docTypes = [
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
-  private _editor: HTMLElement;    // the editor element
-  private _currentMode: AutocompleteMode;
   private _location: WindowPosition;   // location of the popup
+  private _editor: HTMLElement;    // the editor element
+
+  // status
+  private _currentMode: AutocompleteMode;
   private _focusedMenuKey: number;
   private _searchDocType: ValidDocTypes | null;   // if we're in doc search mode, the key of the docType to search
+  private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
   private _shownFilter: string;    // current filter for doc search
+
+  // search results
   private _lastPulledSearchResults: SearchResult[];  // all of the results we got back last time
   private _lastPulledFilter: string;      // the filter we last searched the database for
   private _lastPulledType: ValidDocTypes | null;     // the key of the doctype we last searched the database for
   private _lastPulledRowCount: number;   // the number of rows the last query returned
   private _filteredSearchResults: SearchResult[];   // the currently shown search results
-  private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
 
   constructor(target: HTMLElement, onClose: ()=>void) {
     super();
@@ -78,7 +83,6 @@ export class Autocompleter extends Application {
   retarget(newTarget) {
     this._editor = newTarget;
     this.render();
-    //this.bringToTop();
   }
 
   // this provides fields that will be available in the template; called by parent class
@@ -144,8 +148,6 @@ export class Autocompleter extends Application {
   public async render(force?: boolean) {
     const result = await super.render(force);
     
-    //this.bringToTop();
-
     return result;
   }
 
@@ -163,7 +165,6 @@ export class Autocompleter extends Application {
     return super.close(options);
   }
 
-
   private _onListClick = async(event: MouseEvent): Promise<void> => {
     if (!event?.target?.parentElement)
       return;
@@ -172,8 +173,6 @@ export class Autocompleter extends Application {
 
     // pretend we clicked in
     this._focusedMenuKey = Number.parseInt(index);
-    if (this._currentMode===AutocompleteMode.singleAtWaiting)
-      this._searchDocType = docTypes[this._focusedMenuKey].key;
     this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
   }
 
@@ -195,9 +194,7 @@ export class Autocompleter extends Application {
             if (!selectedKey) return;
 
             // move to the next menu
-            this._currentMode = AutocompleteMode.docSearch
-            this._searchDocType = selectedKey;
-            this._focusedMenuKey = 0;
+            await this._moveToDocSearch(selectedKey);
 
             break;
           }
@@ -217,13 +214,11 @@ export class Autocompleter extends Application {
 
           case "ArrowUp": {
             this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
-            this._searchDocType = docTypes[this._focusedMenuKey].key;
             
             break;
           }
           case "ArrowDown": {
             this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
-            this._searchDocType = docTypes[this._focusedMenuKey].key;
     
             break;
           }
@@ -239,11 +234,7 @@ export class Autocompleter extends Application {
           case 's':
           case 'S': {
             // finalize search mode and select the item type
-            this._currentMode = AutocompleteMode.docSearch;
-            this._searchDocType = event.key.toUpperCase() as ValidDocTypes;
-            this._shownFilter = '';
-            this._focusedMenuKey = 0;  // 0 is the "create" item
-            await this._refreshSearch();
+            await this._moveToDocSearch(event.key.toUpperCase() as ValidDocTypes);
 
             break;
           }
@@ -407,15 +398,15 @@ export class Autocompleter extends Application {
 
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
   private _getFilteredSearchResults(): SearchResult[] {
-    const FULL_TEXT_SEARCH = true; // TODO
-    const RESULT_LENGTH = 5;  // TODO
+    const FULL_TEXT_SEARCH = true; // TODO (for now, only name is searchable anyway)
+    const RESULT_LENGTH = moduleSettings.get(SettingKeys.resultLength);
 
     let retval: SearchResult[];
 
     if (FULL_TEXT_SEARCH) { // TODO
-      retval = this._lastPulledSearchResults;  // we don't know enough to filter any more (other than length)
+      retval = this._lastPulledSearchResults;  // we don't know enough to filter any more (other than length of list)
     } else {
-      retval = this._lastPulledSearchResults.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
+      //retval = this._lastPulledSearchResults.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
     }
 
     return retval.slice(0, RESULT_LENGTH);  
@@ -431,7 +422,6 @@ export class Autocompleter extends Application {
     //   * we're searching the same type we did last time
     //   * the new search results are a subset of the old ones - meaning the new filter starts with the old filter 
     const FULL_TEXT_SEARCH = true; //TODO: pull from settings
-    const MAX_ROWS = 5;  // TODO: pull from settings
 
     if (FULL_TEXT_SEARCH || (this._lastPulledType !== this._searchDocType) ||
         (!this._lastPulledFilter || !this._shownfilter.toLowerCase().startsWith(this._lastPulledFilter.toLowerCase()))) {
@@ -480,8 +470,7 @@ export class Autocompleter extends Application {
 
     // note that current typescript definitions don't know about search() function
     let results: DocumentType[];
-    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings
-    const RESULT_LENGTH = 5;  // TODO: pull from settings
+    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
     if (FULL_TEXT_SEARCH) {
       results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
     } else {
@@ -517,8 +506,7 @@ export class Autocompleter extends Application {
 
     // note that current typescript definitions don't know about search() function
     let results: DocumentType[];
-    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings
-    const RESULT_LENGTH = 5;  // TODO: pull from settings
+    const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; for now it doesn't seem to matter
     if (FULL_TEXT_SEARCH) {
       results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
     } else {
@@ -536,5 +524,13 @@ export class Autocompleter extends Application {
 
     return;
   }
+
+  private async _moveToDocSearch(docType: ValidDocTypes) {
+    this._currentMode = AutocompleteMode.docSearch
+    this._searchDocType = docType;
+    this._shownFilter = '';
+    this._focusedMenuKey = 0;
+    await this._refreshSearch();
+}
 
 }

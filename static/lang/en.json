@@ -1,4 +1,8 @@
 {
   "acm": {
+    "settings": {
+      "resultLength": "Result length",
+      "resultLengthHelp": "Number of results to show at a time when searching"
+    }
   }
 }

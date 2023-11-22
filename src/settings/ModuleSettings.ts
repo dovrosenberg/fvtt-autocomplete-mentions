@@ -3,12 +3,13 @@ import moduleJson from '@module';
 
 export enum SettingKeys {
   // displayed in settings
+  resultLength = 'resultLength',
 
   // internal only
 }
 
 type SettingType<K extends SettingKeys> =
-//    K extends SettingKeys.dialogDisplay ? boolean :
+    K extends SettingKeys.resultLength ? number :
     never;  
 
 // the solo instance
@@ -51,13 +52,13 @@ export class ModuleSettings {
   // these are globals shown in the options
   // name and hint should be the id of a localization string
   private displayParams: (ClientSettings.PartialSettingConfig & { settingID: string })[] = [
-    // {
-    //   settingID: SettingKeys.keyName,
-    //   name: 'acm.settings.keyName',
-    //   hint: 'acm.settings.keyNameHelp',
-    //   default: true,
-    //   type: Boolean,
-    // },
+    {
+      settingID: SettingKeys.resultLength,
+      name: 'acm.settings.resultLength',
+      hint: 'acm.settings.resultLengthHelp',
+      default: 5,
+      type: Number,
+    },
   ];
 
   // these are client-specific and displayed in settings
