@@ -211,8 +211,9 @@ export class Autocompleter extends Application {
         switch (event.key) {
           case 'Enter': {
             // select the item
+            if (!docTypes[this._focusedMenuKey]) return;
+
             const dt = docTypes[this._focusedMenuKey].type;
-            if (!dt) return;
 
             // move to the next menu
             await this._moveToDocSearch(dt);
@@ -274,12 +275,12 @@ export class Autocompleter extends Application {
           switch (event.key) {
             case 'Enter': {
               if (this._currentMode===AutocompleteMode.docSearch) {
-                if (!this._searchDocType) return;
+                if (this._searchDocType === null) return;
 
                 // if it's 0, pop up the add item dialog
                 if (!this._focusedMenuKey) {
                   this._createDocument(this._searchDocType);
-                } else if (this._searchDocType==='J') {
+                } else if (this._searchDocType===ValidDocTypes.Journal) {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
 
@@ -458,7 +459,7 @@ export class Autocompleter extends Application {
 
   // pull the new data from the database
   private async _pullData(): Promise<void> {
-    if (!this._searchDocType) {
+    if (this._searchDocType === null) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
       this._lastPulledSearchResults = [];
@@ -495,7 +496,7 @@ export class Autocompleter extends Application {
     this._lastPulledRowCount = results.length;
 
     // uuid, and pages are OK here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType==='J' ? item.pages : undefined})) as SearchResult[];  
+    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType===ValidDocTypes.Journal ? item.pages : undefined})) as SearchResult[];  
     return;
   }
 

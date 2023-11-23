@@ -10,8 +10,8 @@
           <li><hr></li> 
 
           {{#each docTypes}}
-            <li id="menu-item-{{key}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}" data-acm-index="{{@index}}">
-              <span class="acm-key-prefix">{{key}}:&nbsp;</span>
+            <li id="menu-item-{{type}}" class="acm-data-entry flexrow{{#if (eq @index ../highlightedEntry)}} highlighted{{/if}}" data-acm-index="{{@index}}">
+              <span class="acm-key-prefix">{{keypress}}:&nbsp;</span>
               <span class="acm-key">{{title}}</span>
             </li>
           {{/each}}
