@@ -2,7 +2,6 @@
   "name": "fvtt-autocomplete-mentions",
   "title": "Foundry VTT Autocomplete Mentions",
   "version": "0.0.8", 
-  "blah": "-- pull out language strings",
   "description": "Easily reference actors, scenes, items, etc. in the editor.",
   "repository": {
     "type": "git",
