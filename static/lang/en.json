@@ -3,6 +3,23 @@
     "settings": {
       "resultLength": "Result length",
       "resultLengthHelp": "Number of results to show at a time when searching"
+    },
+    "documents": {
+      "titles": {
+        "actors": "Actors",
+        "items": "Items",
+        "journals": "Journal Entries/Pages",
+        "rollTables": "Roll Tables",
+        "scenes": "Scenes"
+      },
+      "keys": {
+        "NOTE:": "These should generally be the 1st letter of the titles",
+        "actors": "A",
+        "items": "I",
+        "journals": "J",
+        "rollTables": "R",
+        "scenes": "S"
+      }
     }
   }
 }

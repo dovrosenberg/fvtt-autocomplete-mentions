@@ -19,11 +19,11 @@ export type SearchResult = {
 }
 
 export enum ValidDocTypes {
-  A = 'A',
-  I = 'I',
-  J = 'J',
-  R = 'R',
-  S = 'S'
+  Actor,
+  Item,
+  Journal,
+  RollTable,
+  Scene,
 }
 
 export type DocumentType = Actor | Scene | Journal | RollTable | Item;

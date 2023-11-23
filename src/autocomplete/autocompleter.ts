@@ -1,6 +1,6 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
-import { getGame } from '@/utils/game';
+import { getGame, localize } from '@/utils/game';
 import { DocumentType, ValidDocTypes, WindowPosition, SearchResult, AutocompleteMode } from '@/types';
 import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
@@ -16,18 +16,25 @@ import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
   */
 
 
-// key and title show in the menu to pick a type
+// keypress and title show in the menu to pick a type
+// type is the internal doctype
 // searchName shows in the search screen ("Searching ___ for: ")
 // collectionName is the foundry collection
 // referenceText is the text inserted into the editor @___[name]
-const docTypes = [
-  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
-  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
-  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
-  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
-  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
-] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string, }[];
+let docTypes = [] as { type: ValidDocTypes, keypress: string, title: string, searchName: string, collectionName: string, referenceText: string, }[];
 
+// load i18n strings after the game has loaded
+export function initializeLocalizedText(): void {
+  log(false, 'Loading localized document text');
+
+  docTypes = [
+    { type: ValidDocTypes.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
+    { type: ValidDocTypes.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
+    { type: ValidDocTypes.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
+    { type: ValidDocTypes.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
+    { type: ValidDocTypes.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
+  ];
+}
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
@@ -91,7 +98,7 @@ export class Autocompleter extends Application {
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
         journalName: this._selectedJournal?.name,
-        docType: docTypes.find((dt)=>(dt.key===this._searchDocType))?.searchName,
+        docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
         highlightedEntry: this._focusedMenuKey,
         searchResults: this._filteredSearchResults,
         shownFilter: this._shownFilter,
@@ -204,11 +211,11 @@ export class Autocompleter extends Application {
         switch (event.key) {
           case 'Enter': {
             // select the item
-            const selectedKey = docTypes[this._focusedMenuKey].key;
-            if (!selectedKey) return;
+            const dt = docTypes[this._focusedMenuKey].type;
+            if (!dt) return;
 
             // move to the next menu
-            await this._moveToDocSearch(selectedKey);
+            await this._moveToDocSearch(dt);
 
             break;
           }
@@ -236,25 +243,21 @@ export class Autocompleter extends Application {
             break;
           }
 
-          case 'a':
-          case 'A':
-          case 'i':
-          case 'I':
-          case 'j':
-          case 'J':
-          case 'r':
-          case 'R':
-          case 's':
-          case 'S': {
-            // finalize search mode and select the item type
-            await this._moveToDocSearch(event.key.toUpperCase() as ValidDocTypes);
+          default:
+            // see if it's one of the valid keypresses
+            const match = docTypes.find((dt)=>(dt.keypress.toLocaleLowerCase()===event.key.toLocaleLowerCase()));
+
+            if (match) {
+              // finalize search mode and select the item type
+              await this._moveToDocSearch(match.type);
+
+              break;
+            } else {
+              // ignore
+              return;
+            }
 
             break;
-          }
-
-          default:
-            // ignore
-            return;
         }
         break;
       }
@@ -294,7 +297,7 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
+                    const docType = docTypes.find((dt)=>(dt.type===this._searchDocType));
                     this._insertReferenceAndClose(item.uuid);
                   }
                 }
@@ -310,7 +313,7 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
+                    const docType = docTypes.find((dt)=>(dt.type===this._searchDocType));
                     this._insertReferenceAndClose(item.uuid);
                   }
                 }
@@ -466,7 +469,7 @@ export class Autocompleter extends Application {
     this._lastPulledFilter = this._shownFilter;
     this._lastPulledType = this._searchDocType;  
 
-    const docType = docTypes.find((d)=>(d.key===this._searchDocType));
+    const docType = docTypes.find((d)=>(d.type===this._searchDocType));
     if (!docType?.collectionName) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
@@ -551,8 +554,8 @@ export class Autocompleter extends Application {
     this.close();
   }
 
-  private async _createDocument(docType: ValidDocTypes): void {
-    const docTypeInfo = docTypes.find((dt)=>(dt.key===docType));
+  private async _createDocument(docType: ValidDocTypes): Promise<void> {
+    const docTypeInfo = docTypes.find((dt)=>(dt.type===docType));
     if (!docTypeInfo)
       return;
 
