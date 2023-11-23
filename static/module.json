@@ -1,7 +1,7 @@
 {
   "id": "autocomplete-mentions",
   "title": "Autocomplete Mentions",
-  "description": "Easily @mention actors, items, scenese, etc. from any editor box (without having to remember names.",
+  "description": "@mention actors, items, scenes, etc. from any editor box (without having to drag & drop or remember names)",
 
   "compatibility": {
     "minimum": "11",
