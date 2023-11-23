@@ -31,6 +31,7 @@ const docTypes = [
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
+  private _onPointerDown: (event: MouseEvent)=>void;      // this is the listener on document; need to remove it when we close
   private _location: WindowPosition;   // location of the popup
   private _editor: HTMLElement;    // the editor element
 
@@ -128,16 +129,25 @@ export class Autocompleter extends Application {
     // for some reason, if instead of putting focus elsewhere we drag the window, focusout never gets called
     // so, we listen for pointerdown events, too (this doesn't seem super safe because foundry could change the event they use...)
     // note for future versions of foundry - make sure this still works
+
     const onPointerDown = (event: MouseEvent): void => { 
       // find the wrapper
       const wrapper = document.querySelector('#acm-wrapper') as HTMLDivElement;
-      if (!wrapper.contains(event.target as Node)) {
-        // we clicked outside somewhere, so clean everything up
-        document.removeEventListener('pointerdown', onPointerDown);
+      if (!wrapper) {
+        // should never happen... if it does, it probably means we somehow failed to remove the listener
+        document.removeEventListener('pointerdown', this._onPointerDown);
+      } else if (!wrapper.contains(event.target as Node)) {
         this.close(); 
       }
     }
-    document.addEventListener('pointerdown', onPointerDown);
+
+    // activateListeners happens every time we rerender, so if we've set the event listener before, we
+    //    need to remove the old one and replace it with the new one (which ties to the new DOM elements)
+    if (this._onPointerDown)
+      document.removeEventListener('pointerdown', this._onPointerDown);
+
+    this._onPointerDown = onPointerDown;
+    document.addEventListener('pointerdown', onPointerDown);  
   }
 
   public async render(force?: boolean) {
@@ -151,6 +161,9 @@ export class Autocompleter extends Application {
     const wrapper = document.querySelector(`.acm-autocomplete`) as HTMLElement;
     if (wrapper)
       wrapper.style.display = 'none';
+
+    // remove the listener
+    document.removeEventListener('pointerdown', this._onPointerDown);
 
     // call the callback, if present
     if (this._onClose)
