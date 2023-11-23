@@ -564,9 +564,16 @@ export class Autocompleter extends Application {
     const data = {folder: undefined };
     const options = {width: 320, left: 300, top: 300 };
 
-    // register the hooks to catch after the document is made
+    // register the hook to catch after the document is made
+    // we need to save the current editor selection because it goes away when the new boxes pop up
+    const selection = document.getSelection();
+    const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
+
     Hooks.once(docTypeInfo.createHookName, ({name}: {name:string}) => {
-      debugger;
+      if (range) {
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
       this._insertTextAndClose(`@${docTypeInfo.referenceText}[${name}]`);
     });
 
