@@ -2,15 +2,33 @@
 
 [![Supported Foundry Versions](https://img.shields.io/endpoint?url=https://foundryshields.com/version?url=https://github.com/dovrosenberg/fvtt-autocomplete-mentions/raw/master/static/module.json)](https://github.com/dovrosenberg/fvtt-autocomplete-mentions)
 
-Popup menu to easily find the documents you want to cross-reference when typing in editor boxes.
+Quickly insert cross-references to actors, items, scenes, roll tables, and journals inside any editor box in Foundry without needing find them, drag & drop, or remember the precise spelling/capitalization.
 
 [Feature requests?](https://github.com/dovrosenberg/fvtt-autocomplete-mentions/issues/new/choose)
 
 ## Features
-
-- ..
+- Facilitate your world building by rapidly cross-referencing other parts of your world as you write, 
+without needing to stop to drag & drop or even create a new element. 
+- Insert references to actors, items, journals (and pages), scenes, and roll tables.
+- Quickly create new documents (actors, etc.) with a couple of keystrokes, simultaneous inserting a reference 
+to the newly created element into the editor.
 
 ## How it works
+- Typing @ in any* Foundry VTT editor will pop open a context menu where you can select the type of document.
+- Select the document type by using the up/down arrows and enter key, typing the first letter as indicated, 
+or clicking with the mouse
+- You'll then get a list of the available documents of that type.  Start typing to filter the list.  Filtering is Foundry's full-text search (which currently appears to only search the name field, but finds matches in any part of the field - not just the start.  For example, 'j', 'jo', and 'oe' would all be matches for an actor named 'Joe'). Searching is not case sensitive.
+- You can select the document you want with the arrow/enter keys or clicking with the mouse.  You can also use the "Create" button to quickly create a new document while simultaneously inserting a reference to it.
+- In the case of journal entries, once you pick the main entry, you'll get a subscreen where you can search for and select a specific page to refer to (or just pick the option to point to the overall entry).
+- Backspace will delete characters from the search string, and when the search string is empty, it will also go back to the prior menu.  
+- The Escape key will close the menu without inserting a reference.  Pressing escape immediately on the first menu after typing '@' will insert a '@' character in the editor for scenarios where you need that character. 
+- There is a module setting to set the maximum number of search results that will show at one time.  If you set it really high, I take no responsibility for failures of the UI to accomodate. :) 
+
+\* Note: currently only supports the new ProseMirror editor - send me a feature request if 
+you need a different one
+
+## Known bugs
+- If you hit the "create" button but don't complete the process of creating the new document, the next time you create a document of that type, it will still insert the reference if the editor is still open.
 
 ## Support
 
