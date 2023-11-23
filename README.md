@@ -19,7 +19,8 @@ If you believe you found a bug or would like to post a feature request, head ove
 
 ## Credits
 
-So far, just me, but happy to consider pull requests.
+Autocomplete Mentions is the result of the effort of many people (whether they know it or not). Please refer to [CREDITS.md](https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/CREDITS.md) for the full list.
+
 
 ## Copyright and usage
 THIS ENTIRE REPOSITORY IS COVERED BY THIS LICENSE AND COPYRIGHT NOTICE
