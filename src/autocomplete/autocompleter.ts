@@ -20,14 +20,13 @@ import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 // searchName shows in the search screen ("Searching ___ for: ")
 // collectionName is the foundry collection
 // referenceText is the text inserted into the editor @___[name]
-// createHookName is the pre-creation hook name
 const docTypes = [
-  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', createHookName: 'preCreateActor', },
-  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item', createHookName: 'preCreateItem', },
-  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', createHookName: 'preCreateJournalEntry', },
-  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', createHookName: 'preCreateRollTable', },
-  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', createHookName: 'preCreateScene', },
-] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string, createHookName: string, }[];
+  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
+  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
+  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
+  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
+  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
+] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string, }[];
 
 
 export class Autocompleter extends Application {
@@ -38,17 +37,17 @@ export class Autocompleter extends Application {
 
   // status
   private _currentMode: AutocompleteMode;
-  private _focusedMenuKey: number;
-  private _searchDocType: ValidDocTypes | null;   // if we're in doc search mode, the key of the docType to search
+  private _focusedMenuKey = 0 as number;
+  private _searchDocType = null as ValidDocTypes | null;   // if we're in doc search mode, the key of the docType to search
   private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
-  private _shownFilter: string;    // current filter for doc search
+  private _shownFilter = '' as string;    // current filter for doc search
 
   // search results
-  private _lastPulledSearchResults: SearchResult[];  // all of the results we got back last time
-  private _lastPulledFilter: string;      // the filter we last searched the database for
-  private _lastPulledType: ValidDocTypes | null;     // the key of the doctype we last searched the database for
-  private _lastPulledRowCount: number;   // the number of rows the last query returned
-  private _filteredSearchResults: SearchResult[];   // the currently shown search results
+  private _lastPulledSearchResults = [] as SearchResult[];  // all of the results we got back last time
+  private _lastPulledFilter = '' as string;      // the filter we last searched the database for
+  private _lastPulledType = null as ValidDocTypes | null;     // the key of the doctype we last searched the database for
+  private _lastPulledRowCount = 0 as number;   // the number of rows the last query returned
+  private _filteredSearchResults = [] as SearchResult[];   // the currently shown search results
 
   constructor(target: HTMLElement, onClose: ()=>void) {
     super();
@@ -60,11 +59,6 @@ export class Autocompleter extends Application {
     this._onClose = onClose;
 
     this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
-    this._focusedMenuKey = 0;
-
-    this._searchDocType = null;
-    this._shownFilter = '';
-    this._lastPulledSearchResults=[];
 
     this.render();
   }
@@ -553,7 +547,7 @@ export class Autocompleter extends Application {
     this.close();
   }
 
-  private _createDocument(docType: ValidDocTypes): void {
+  private async _createDocument(docType: ValidDocTypes): void {
     const docTypeInfo = docTypes.find((dt)=>(dt.key===docType));
     if (!docTypeInfo)
       return;
@@ -569,18 +563,22 @@ export class Autocompleter extends Application {
     const selection = document.getSelection();
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
-    Hooks.once(docTypeInfo.createHookName, ({name}: {name:string}) => {
-      if (range) {
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+    //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;
+
+    const cls = getDocumentClass(collection.documentName);
+    cls.createDialog(data, options).then((result) => {
+      if (result) {
+        // it was created
+        if (range) {
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+        this._insertTextAndClose(`@${docTypeInfo.referenceText}[${result.name}]`);
+      } else {
+        // dialog was canceled; nothing to do      
       }
-      this._insertTextAndClose(`@${docTypeInfo.referenceText}[${name}]`);
     });
 
-    //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;
-    const cls = getDocumentClass(collection.documentName);
-    cls.createDialog(data, options);
-
     this.close();
-  }  
+  }
 }
