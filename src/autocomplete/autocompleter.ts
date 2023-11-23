@@ -20,13 +20,14 @@ import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 // searchName shows in the search screen ("Searching ___ for: ")
 // collectionName is the foundry collection
 // referenceText is the text inserted into the editor @___[name]
+// createHookName is the pre-creation hook name
 const docTypes = [
-  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor' },
-  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item' },
-  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry' },
-  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable' },
-  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene' },
-] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string }[];
+  { key: 'A', title: 'Actors', searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', createHookName: 'preCreateActor', },
+  { key: 'I', title: 'Items', searchName: 'Items', collectionName: 'items', referenceText: 'Item', createHookName: 'preCreateItem', },
+  { key: 'J', title: 'Journal entries/pages', searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', createHookName: 'preCreateJournalEntry', },
+  { key: 'R', title: 'Roll Tables', searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', createHookName: 'preCreateRollTable', },
+  { key: 'S', title: 'Scenes', searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', createHookName: 'preCreateScene', },
+] as { key: ValidDocTypes, title: string, searchName: string, collectionName: string, referenceText: string, createHookName: string, }[];
 
 
 export class Autocompleter extends Application {
@@ -203,8 +204,6 @@ export class Autocompleter extends Application {
     event.preventDefault();
     event.stopPropagation();
 
-    console.log(event.key);
-    
     // for various other keys, it depends on the model
     switch (this._currentMode) {
       case AutocompleteMode.singleAtWaiting: {
@@ -282,7 +281,7 @@ export class Autocompleter extends Application {
 
                 // if it's 0, pop up the add item dialog
                 if (!this._focusedMenuKey) {
-                  //showAddGlobalItemDialog.value = true;
+                  this._createDocument(this._searchDocType);
                 } else if (this._searchDocType==='J') {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
@@ -554,4 +553,27 @@ export class Autocompleter extends Application {
     this.close();
   }
 
+  private _createDocument(docType: ValidDocTypes): void {
+    const docTypeInfo = docTypes.find((dt)=>(dt.key===docType));
+    if (!docTypeInfo)
+      return;
+
+    const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
+
+    // TODO: maybe default the folder to what's currently open?
+    const data = {folder: undefined };
+    const options = {width: 320, left: 300, top: 300 };
+
+    // register the hooks to catch after the document is made
+    Hooks.once(docTypeInfo.createHookName, ({name}: {name:string}) => {
+      debugger;
+      this._insertTextAndClose(`@${docTypeInfo.referenceText}[${name}]`);
+    });
+
+    //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;
+    const cls = getDocumentClass(collection.documentName);
+    cls.createDialog(data, options);
+
+    this.close();
+  }  
 }
