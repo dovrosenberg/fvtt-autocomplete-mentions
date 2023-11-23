@@ -12,6 +12,7 @@ without needing to stop to drag & drop or even create a new element.
 - Insert references to actors, items, journals (and pages), scenes, and roll tables.
 - Quickly create new documents (actors, etc.) with a couple of keystrokes, simultaneous inserting a reference 
 to the newly created element into the editor.
+- Inserts references as pure UUID so that the link text updates when the name of the referenced item changes 
 
 ## How it works
 - Typing @ in any* Foundry VTT editor will pop open a context menu where you can select the type of document.
@@ -23,12 +24,11 @@ or clicking with the mouse
 - Backspace will delete characters from the search string, and when the search string is empty, it will also go back to the prior menu.  
 - The Escape key will close the menu without inserting a reference.  Pressing escape immediately on the first menu after typing '@' will insert a '@' character in the editor for scenarios where you need that character. 
 - There is a module setting to set the maximum number of search results that will show at one time.  If you set it really high, I take no responsibility for failures of the UI to accomodate. :) 
+- Note that links will be inserted as just UUID references, which means that when you view the text (not in edit mode), you'll see the current name of the referenced document - even if it has changed since the link was inserted.  If you want to have the link text set permanently, regardless of future changes to the document name, you can manually add the text.  For example, you might get a reference like: `@UUID[Actor.E6azrOSJJfSxvgty]`.  By changing it to `@UUID[Actor.E6azrOSJJfSxvgty]{Joe}`, you can make the link text read "Joe", even if you change the Actor's name on the future, while ensuring the link continues to work.
 
 \* Note: currently only supports the new ProseMirror editor - send me a feature request if 
 you need a different one
 
-## Known bugs
-- If you hit the "create" button but don't complete the process of creating the new document, the next time you create a document of that type, it will still insert the reference if the editor is still open.
 
 ## Support
 

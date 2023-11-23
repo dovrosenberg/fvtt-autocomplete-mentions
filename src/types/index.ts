@@ -13,7 +13,7 @@ export type WindowPosition = {
 }
 
 export type SearchResult = {
-  _id: string;   
+  uuid: string;
   name: string;
   pages: EmbeddedCollection<any, any> | null;
 }

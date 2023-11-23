@@ -282,7 +282,7 @@ export class Autocompleter extends Application {
 
                   // get the clicked journal
                   const journal = this._filteredSearchResults[this._focusedMenuKey-1];
-                  this._selectedJournal = { name: journal.name, pages: journal.pages, _id: journal._id };
+                  this._selectedJournal = {...journal};
 
                   // reset search
                   this._shownFilter = '';
@@ -295,14 +295,14 @@ export class Autocompleter extends Application {
                   // insert the appropriate text
                   if (item) {
                     const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
-                    this._insertTextAndClose(`@${docType?.referenceText}[${item.name}]`);
+                    this._insertReferenceAndClose(item.uuid);
                   }
                 }
               } else {
                 // handle journal page select
                 // if it's 0, we just add a reference to the whole journal
                 if (!this._focusedMenuKey) {
-                  this._insertTextAndClose(`@JournalEntry[${this._selectedJournal.name}]`);
+                  this._insertReferenceAndClose(this._selectedJournal.uuid);
                 } else {
                   // pages have to be entered as a UUID
                   // get the clicked item
@@ -311,7 +311,7 @@ export class Autocompleter extends Application {
                   // insert the appropriate text
                   if (item) {
                     const docType = docTypes.find((dt)=>(dt.key===this._searchDocType));
-                    this._insertTextAndClose(`@UUID[JournalEntry.${this._selectedJournal._id}.JournalEntryPage.${item._id}]{${item.name}}`);
+                    this._insertReferenceAndClose(item.uuid);
                   }
                 }
               }
@@ -491,8 +491,8 @@ export class Autocompleter extends Application {
 
     this._lastPulledRowCount = results.length;
 
-    // id and pages are OK here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({_id: item.id, name: item.name, pages: this._searchDocType==='J' ? item.pages : undefined})) as SearchResult[];  
+    // uuid, and pages are OK here despite typescript
+    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType==='J' ? item.pages : undefined})) as SearchResult[];  
     return;
   }
 
@@ -527,8 +527,8 @@ export class Autocompleter extends Application {
 
     this._lastPulledRowCount = results.length;
 
-    // id ok here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({_id: item.id, name: item.name, pages: null})) as SearchResult[];
+    // uuid ok here despite typescript
+    this._lastPulledSearchResults = results.map((item)=>({ uuid: item.uuid, name: item.name, pages: null})) as SearchResult[];
 
     return;
   }
@@ -539,6 +539,10 @@ export class Autocompleter extends Application {
     this._shownFilter = '';
     this._focusedMenuKey = 0;
     await this._refreshSearch();
+  }
+
+  private _insertReferenceAndClose(uuid: string): void {
+    this._insertTextAndClose(`@UUID[${uuid}]`);
   }
 
   private _insertTextAndClose(text: string): void {
@@ -573,7 +577,7 @@ export class Autocompleter extends Application {
           selection?.removeAllRanges();
           selection?.addRange(range);
         }
-        this._insertTextAndClose(`@${docTypeInfo.referenceText}[${result.name}]`);
+        this._insertReferenceAndClose(result.uuid);
       } else {
         // dialog was canceled; nothing to do      
       }
