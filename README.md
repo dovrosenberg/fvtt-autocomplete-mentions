@@ -1,5 +1,3 @@
-# Autocomplete Mentions
-
 [![Supported Foundry Versions](https://img.shields.io/endpoint?url=https://foundryshields.com/version?url=https://github.com/dovrosenberg/fvtt-autocomplete-mentions/raw/master/static/module.json)](https://github.com/dovrosenberg/fvtt-autocomplete-mentions)
 
 Quickly insert cross-references to actors, items, scenes, roll tables, and journals inside any editor box in Foundry without needing find them, drag & drop, or remember the precise spelling/capitalization.
