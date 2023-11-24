@@ -30,10 +30,13 @@ or clicking with the mouse
 you need a different one
 
 
-## Support
+## Issues?
 
 If you believe you found a bug or would like to post a feature request, head over to the module's [Github repo](https://github.com/dovrosenberg/fvtt-autocomplete-mentions) and [open a new issue](https://github.com/dovrosenberg/fvtt-autocomplete-mentions/issues/new/choose).
 
+## Support
+
+I'm happy to do this for free, as I primarily work on things I like to use myself.  But if you'd like to [buy me a root beer](https://ko-fi.com/phloro), I love knowing that people are using my projects and like them enough to make the effort. It's really appreciated!  
 
 ## Credits
 
