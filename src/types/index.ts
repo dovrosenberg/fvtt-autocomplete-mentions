@@ -18,7 +18,7 @@ export type SearchResult = {
   pages: EmbeddedCollection<any, any> | null;
 }
 
-export enum ValidDocTypes {
+export enum ValidDocType {
   Actor,
   Item,
   Journal,
@@ -27,3 +27,8 @@ export enum ValidDocTypes {
 }
 
 export type DocumentType = Actor | Scene | Journal | RollTable | Item;
+
+export enum EditorType {
+  ProseMirror,
+  TinyMCE
+}
