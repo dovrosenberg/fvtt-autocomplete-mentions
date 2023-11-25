@@ -1,7 +1,7 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame, localize } from '@/utils/game';
-import { DocumentType, ValidDocTypes, WindowPosition, SearchResult, AutocompleteMode } from '@/types';
+import { DocumentType, ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType } from '@/types';
 import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
   /* so here's the flow...
@@ -21,18 +21,18 @@ import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 // searchName shows in the search screen ("Searching ___ for: ")
 // collectionName is the foundry collection
 // referenceText is the text inserted into the editor @___[name]
-let docTypes = [] as { type: ValidDocTypes, keypress: string, title: string, searchName: string, collectionName: string, referenceText: string, }[];
+let docTypes = [] as { type: ValidDocType, keypress: string, title: string, searchName: string, collectionName: string, referenceText: string, }[];
 
 // load i18n strings after the game has loaded
 export function initializeLocalizedText(): void {
   log(false, 'Loading localized document text');
 
   docTypes = [
-    { type: ValidDocTypes.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
-    { type: ValidDocTypes.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
-    { type: ValidDocTypes.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
-    { type: ValidDocTypes.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
-    { type: ValidDocTypes.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
+    { type: ValidDocType.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
+    { type: ValidDocType.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
+    { type: ValidDocType.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
+    { type: ValidDocType.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
+    { type: ValidDocType.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
   ];
 }
 
@@ -41,27 +41,29 @@ export class Autocompleter extends Application {
   private _onPointerDown: (event: MouseEvent)=>void;      // this is the listener on document; need to remove it when we close
   private _location: WindowPosition;   // location of the popup
   private _editor: HTMLElement;    // the editor element
+  private _editorType: EditorType;   // the type of editor we're supporting
 
   // status
   private _currentMode: AutocompleteMode;
   private _focusedMenuKey = 0 as number;
-  private _searchDocType = null as ValidDocTypes | null;   // if we're in doc search mode, the key of the docType to search
+  private _searchDocType = null as ValidDocType | null;   // if we're in doc search mode, the key of the docType to search
   private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
   private _shownFilter = '' as string;    // current filter for doc search
 
   // search results
   private _lastPulledSearchResults = [] as SearchResult[];  // all of the results we got back last time
   private _lastPulledFilter = '' as string;      // the filter we last searched the database for
-  private _lastPulledType = null as ValidDocTypes | null;     // the key of the doctype we last searched the database for
+  private _lastPulledType = null as ValidDocType | null;     // the key of the doctype we last searched the database for
   private _lastPulledRowCount = 0 as number;   // the number of rows the last query returned
   private _filteredSearchResults = [] as SearchResult[];   // the currently shown search results
 
-  constructor(target: HTMLElement, onClose: ()=>void) {
+  constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void) {
     super();
 
     log(false, 'Autocompleter construction');
 
     this._editor = target;
+    this._editorType = editorType;
     this._currentMode = AutocompleteMode.singleAtWaiting;
     this._onClose = onClose;
 
@@ -133,11 +135,14 @@ export class Autocompleter extends Application {
     // note for future versions of foundry - make sure this still works
 
     const onPointerDown = (event: MouseEvent): void => { 
-      // find the wrapper
+      // find the wrapper 
       const wrapper = document.querySelector('#acm-wrapper') as HTMLDivElement;
       if (!wrapper) {
         // should never happen... if it does, it probably means we somehow failed to remove the listener
         document.removeEventListener('pointerdown', this._onPointerDown);
+        if (this._editorType===EditorType.TinyMCE) {
+          this._editor.ownerDocument.removeEventListener('pointerdown', this._onPointerDown);
+        }
       } else if (!wrapper.contains(event.target as Node)) {
         this.close(); 
       }
@@ -145,12 +150,20 @@ export class Autocompleter extends Application {
 
     // activateListeners happens every time we rerender, so if we've set the event listener before, we
     //    need to remove the old one and replace it with the new one (which ties to the new DOM elements)
-    if (this._onPointerDown)
+    if (this._onPointerDown) {
       document.removeEventListener('pointerdown', this._onPointerDown);
+      if (this._editorType===EditorType.TinyMCE) {
+        this._editor.ownerDocument.removeEventListener('pointerdown', this._onPointerDown);
+      }
+    }
 
     this._onPointerDown = onPointerDown;
     document.addEventListener('pointerdown', onPointerDown);  
-  }
+
+    if (this._editorType===EditorType.TinyMCE) {
+      this._editor.ownerDocument.addEventListener('pointerdown', onPointerDown);
+    }
+}
 
   public async render(force?: boolean) {
     const result = await super.render(force);
@@ -160,12 +173,16 @@ export class Autocompleter extends Application {
 
   async close(options = {}): Promise<void> {
     // turn off visibility immediately so we don't have to wait for the animation
+    // NOTE: the application is rendered into the parent application, even if we're in an iframe for TinyMCE
     const wrapper = document.querySelector(`.acm-autocomplete`) as HTMLElement;
     if (wrapper)
       wrapper.style.display = 'none';
 
     // remove the listener
     document.removeEventListener('pointerdown', this._onPointerDown);
+    if (this._editorType===EditorType.TinyMCE) {
+      this._editor.ownerDocument.removeEventListener('pointerdown', this._onPointerDown);
+    }
 
     // call the callback, if present
     if (this._onClose)
@@ -280,7 +297,7 @@ export class Autocompleter extends Application {
                 // if it's 0, pop up the add item dialog
                 if (!this._focusedMenuKey) {
                   this._createDocument(this._searchDocType);
-                } else if (this._searchDocType===ValidDocTypes.Journal) {
+                } else if (this._searchDocType===ValidDocType.Journal) {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
 
@@ -375,7 +392,7 @@ export class Autocompleter extends Application {
   }
           
   private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
-    const sel = document.getSelection();
+    const sel = this._editor.ownerDocument.getSelection();
 
     // check if selection exists
     if (!sel || !sel.rangeCount) return null;
@@ -402,10 +419,22 @@ export class Autocompleter extends Application {
     const editorRect = this._editor?.getBoundingClientRect();
     if (!editorRect) return null;
 
-    // return coord
     const rect = rects[0];  // this is the location of the cursor
+
+    let adjustmentRect = { left: 0, top: 0 };
+
+    // if it's TinyMCE, we have to adjust for the location of the iframe it's in
+    if (this._editorType===EditorType.TinyMCE) {
+      const iframe = this._editor.ownerDocument.defaultView.frameElement;
+      if (!iframe)
+        throw 'Error locating TinyMCE - is it not in an iframe???';
+
+      adjustmentRect = iframe.getBoundingClientRect();      
+    }
+
+    // return coord
     //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
-    return { left: rect.left + paddingLeft, top: rect.top + paddingTop }
+    return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
   }
 
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
@@ -496,7 +525,7 @@ export class Autocompleter extends Application {
     this._lastPulledRowCount = results.length;
 
     // uuid, and pages are OK here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType===ValidDocTypes.Journal ? item.pages : undefined})) as SearchResult[];  
+    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType===ValidDocType.Journal ? item.pages : undefined})) as SearchResult[];  
     return;
   }
 
@@ -537,7 +566,7 @@ export class Autocompleter extends Application {
     return;
   }
 
-  private async _moveToDocSearch(docType: ValidDocTypes) {
+  private async _moveToDocSearch(docType: ValidDocType) {
     this._currentMode = AutocompleteMode.docSearch
     this._searchDocType = docType;
     this._shownFilter = '';
@@ -551,11 +580,11 @@ export class Autocompleter extends Application {
 
   private _insertTextAndClose(text: string): void {
     this._editor.focus();  
-    document.execCommand('insertText', false, text);
+    this._editor.ownerDocument.execCommand('insertText', false, text);
     this.close();
   }
 
-  private async _createDocument(docType: ValidDocTypes): Promise<void> {
+  private async _createDocument(docType: ValidDocType): Promise<void> {
     const docTypeInfo = docTypes.find((dt)=>(dt.type===docType));
     if (!docTypeInfo)
       return;
@@ -568,7 +597,7 @@ export class Autocompleter extends Application {
 
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
-    const selection = document.getSelection();
+    const selection = this._editor.ownerDocument.getSelection();
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
     //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;

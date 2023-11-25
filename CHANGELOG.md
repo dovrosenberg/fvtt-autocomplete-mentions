@@ -1,5 +1,12 @@
 # Change Log
 
+## v1.0.0 - Support for TinyMCE
+![](https://img.shields.io/badge/release%20date-November%2025%2C%202023-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.0.0/module.zip)
+
+Added support for TinyMCE editors.
+
+
 ## v0.0.8 - Initial Release
 
 ![](https://img.shields.io/badge/release%20date-November%2023%2C%202023-blue)
