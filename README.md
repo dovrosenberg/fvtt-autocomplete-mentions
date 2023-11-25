@@ -24,7 +24,7 @@ or clicking with the mouse
 - There is a module setting to set the maximum number of search results that will show at one time.  If you set it really high, I take no responsibility for failures of the UI to accomodate. :) 
 - Note that links will be inserted as just UUID references, which means that when you view the text (not in edit mode), you'll see the current name of the referenced document - even if it has changed since the link was inserted. If you want to have the link text set permanently, regardless of future changes to the document name, you can manually add the text. For example, you might get a reference like: `@UUID[Actor.E6azrOSJJfSxvgty]`. By adding text in curly brackets immediately afterward (ex. `@UUID[Actor.E6azrOSJJfSxvgty]{Joe}`), you can make the link text read "Joe", even if you change the Actor's name in the future, while ensuring the link continues to work.
 
-\* Note: currently only supports the new (standard) ProseMirror editor - send me a feature request if 
+\* Note: Supports the new (standard) ProseMirror editor, as well as TinyMCE - send me a feature request if 
 you need a different one
 
 
