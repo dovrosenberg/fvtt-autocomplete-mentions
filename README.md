@@ -8,7 +8,7 @@ Quickly insert cross-references to actors, items, scenes, roll tables, and journ
 - Facilitate your world building by rapidly cross-referencing other parts of your world as you write, 
 without needing to stop to drag & drop or even create a new element. 
 - Insert references to actors, items, journals (and pages), scenes, and roll tables.
-- Quickly create new documents (actors, etc.) with a couple of keystrokes, simultaneous inserting a reference 
+- Quickly create new documents (actors, etc.) with a couple of keystrokes, simultaneously inserting a reference 
 to the newly created element into the editor.
 - Inserts references as pure UUID so that the link text updates when the name of the referenced item changes 
 
