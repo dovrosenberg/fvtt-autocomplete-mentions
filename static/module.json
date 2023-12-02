@@ -33,7 +33,7 @@
     }
   ],
 
-  "url": "https://github.com/dovrosenberg/fvt--autocomplete-mentions",
+  "url": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions",
   "manifest": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/releases/latest/download/module.json",
   "download": "#{DOWNLOAD}#",
   "## version": "will be added when we build",
