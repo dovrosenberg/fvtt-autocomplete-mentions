@@ -1,5 +1,11 @@
 # Change Log
 
+## v1.0.1 - URL fix in module.json
+![](https://img.shields.io/badge/release%20date-December%202%2C%202023-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.0.1/module.zip)
+
+Fixed bad URL in module.json
+
 ## v1.0.0 - Support for TinyMCE
 ![](https://img.shields.io/badge/release%20date-November%2025%2C%202023-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.0.0/module.zip)
