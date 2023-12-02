@@ -524,7 +524,7 @@ export class Autocompleter extends Application {
 
     this._lastPulledRowCount = results.length;
 
-    // uuid, and pages are OK here despite typescript
+    // pages OK here despite typescript
     this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType===ValidDocType.Journal ? item.pages : undefined})) as SearchResult[];  
     return;
   }

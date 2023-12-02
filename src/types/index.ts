@@ -26,7 +26,7 @@ export enum ValidDocType {
   Scene,
 }
 
-export type DocumentType = Actor | Scene | Journal | RollTable | Item;
+export type DocumentType = Actor | Scene | JournalEntry | RollTable | Item;
 
 export enum EditorType {
   ProseMirror,
