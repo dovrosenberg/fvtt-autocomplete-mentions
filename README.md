@@ -40,6 +40,20 @@ I'm happy to do this for free, as I primarily work on things I like to use mysel
 
 Autocomplete Mentions is the result of the effort of many people (whether they know it or not). Please refer to [CREDITS.md](https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/CREDITS.md) for the full list.
 
+## How to Contribut
+
+When using [VSCode](https://code.visualstudio.com/), you can start a [dev container](https://code.visualstudio.com/docs/devcontainers/create-dev-container) for this repository. Before building it, be sure to have those environement variables sets:
+
+```
+FOUNDRYVTT_APP=<absolute path to your foundry insllation>
+FOUNDRYVTT_DATA=<absolute path to your foundry data directory>
+```
+
+Once in VSCode-RemoteContainer, use `File: Open workspace from file...` to open the `.code-workspace` file. It will give you acces to the current module, all installed modules and the foundry app to debug.
+
+Use `npm install` and ` npm debug` to create the module in your foundry installation. The module should not already be present in foundry.
+
+While your foundry app is running, use the web debugger (like [edge tool](https://marketplace.visualstudio.com/items?itemName=ms-edgedevtools.vscode-edge-devtools)) using the exemple in `.vscode/launch.json.template` as `.vscode/launch.json` to debug the module.
 
 ## Copyright and usage
 THIS ENTIRE REPOSITORY IS COVERED BY THIS LICENSE AND COPYRIGHT NOTICE
