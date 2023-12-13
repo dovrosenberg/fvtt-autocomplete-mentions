@@ -285,6 +285,11 @@ export class Autocompleter extends Application {
       case AutocompleteMode.journalPageSearch: {
         // if it's a regular character, update the filter string
         if (event.key.length===1) {
+          // if the filter is the same as the default, we want to start a new search.
+          if (this._shownFilter === this._editor.ownerDocument.getSelection()?.toString()) {
+            this._shownFilter = '';
+          }
+
           this._shownFilter += event.key;
 
           await this._refreshSearch();
@@ -571,7 +576,7 @@ export class Autocompleter extends Application {
   private async _moveToDocSearch(docType: ValidDocType) {
     this._currentMode = AutocompleteMode.docSearch
     this._searchDocType = docType;
-    this._shownFilter = '';
+    this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
     this._focusedMenuKey = 0;
     await this._refreshSearch();
   }
