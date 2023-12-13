@@ -246,6 +246,7 @@ export class Autocompleter extends Application {
 
           case 'Backspace': {
             // close the menu
+            this._editor.focus()
             this.close();
             return;
           }
@@ -363,6 +364,7 @@ export class Autocompleter extends Application {
             
             case "Escape": {
               // just close the whole menu (without inserting @, because it's more likely we just changed our mind)
+              this._editor.focus()
               this.close();
               return;
             }
