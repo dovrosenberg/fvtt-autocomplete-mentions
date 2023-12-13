@@ -598,8 +598,9 @@ export class Autocompleter extends Application {
 
     const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
 
+    // Use de current filter as default name
     // TODO: maybe default the folder to what's currently open?
-    const data = {folder: undefined };
+    const data = { folder: undefined, name: this._shownFilter };
     const options = {width: 320, left: 300, top: 300 };
 
     // register the hook to catch after the document is made
@@ -612,6 +613,16 @@ export class Autocompleter extends Application {
     const cls = getDocumentClass(collection.documentName);
     cls.createDialog(data, options).then((result) => {
       if (result) {
+        // Check if we had a default name and if the user did not change it.
+        // Foundry override the name if the user enter nothing.
+        //    Check if foundry use it's default name and change it to our.
+        if (this._shownFilter.length > 0) {
+          const label = game.i18n.localize(cls.metadata.label);
+          const docDefaultName = game.i18n.format("DOCUMENT.New", { type: label });
+          if (result.name.startsWith(docDefaultName)) {
+            result.update({ name: this._shownFilter });
+          }
+        }
         // it was created
         if (range) {
           selection?.removeAllRanges();
