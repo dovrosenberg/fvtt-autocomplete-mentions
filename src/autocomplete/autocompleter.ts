@@ -42,6 +42,7 @@ export class Autocompleter extends Application {
   private _location: WindowPosition;   // location of the popup
   private _editor: HTMLElement;    // the editor element
   private _editorType: EditorType;   // the type of editor we're supporting
+  private _currentDoc: any;    // current document being edited
 
   // status
   private _currentMode: AutocompleteMode;
@@ -59,6 +60,8 @@ export class Autocompleter extends Application {
 
   constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void) {
     super();
+
+    this._currentDoc = ui.activeWindow.document;
 
     log(false, 'Autocompleter construction');
 
@@ -599,8 +602,7 @@ export class Autocompleter extends Application {
     const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
 
     // Use de current filter as default name
-    // TODO: maybe default the folder to what's currently open?
-    const data = { folder: undefined, name: this._shownFilter };
+    const data = { folder: this._currentDoc.parent.folder.id, name: this._shownFilter };
     const options = {width: 320, left: 300, top: 300 };
 
     // register the hook to catch after the document is made
