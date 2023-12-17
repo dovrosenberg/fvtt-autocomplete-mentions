@@ -43,6 +43,7 @@ export class Autocompleter extends Application {
   private _editor: HTMLElement;    // the editor element
   private _editorType: EditorType;   // the type of editor we're supporting
   private _currentDoc: any;    // current document being edited
+  private _journalSearchFromPageEdition = false;    // Indicates if the app is oppened from a page edition and we are serching for a journal.
 
   // status
   private _currentMode: AutocompleteMode;
@@ -102,6 +103,8 @@ export class Autocompleter extends Application {
         singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
+        journalSearchFromPageEdition: this._journalSearchFromPageEdition,
+        firstSearchIdx: this._journalSearchFromPageEdition ? 2 : 1,
         journalName: this._selectedJournal?.name,
         docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
         highlightedEntry: this._focusedMenuKey,
@@ -298,6 +301,11 @@ export class Autocompleter extends Application {
           await this._refreshSearch();
         } else {
           // handle special keys
+
+          // Before the searche result we can have one or two specion command:
+          //   - Create New (always there)
+          //   - Select current Journal (in search journal page only)
+          const resultStartOffset = this._journalSearchFromPageEdition ? 2 : 1;
           switch (event.key) {
             case 'Enter': {
               if (this._currentMode===AutocompleteMode.docSearch) {
@@ -311,12 +319,18 @@ export class Autocompleter extends Application {
                   this._currentMode = AutocompleteMode.journalPageSearch;
 
                   // get the clicked journal
-                  const journal = this._filteredSearchResults[this._focusedMenuKey-1];
+                  const journal = this._focusedMenuKey === 1   // Check if we selected the current journal special command.
+                    ? {
+                      uuid: this._currentDoc.parent.uuid,
+                      name: this._currentDoc.parent.name,
+                      pages: this._currentDoc.parent.pages }
+                    : this._filteredSearchResults[this._focusedMenuKey - 1];
                   this._selectedJournal = {...journal};
 
                   // reset search
                   this._shownFilter = '';
                   this._focusedMenuKey = 0;   // use whole journal
+                  this._journalSearchFromPageEdition = false;
                   await this._refreshSearch();
                 } else {
                   // get the clicked item
@@ -357,6 +371,7 @@ export class Autocompleter extends Application {
                   // journal search
                   this._currentMode = AutocompleteMode.docSearch;
                   this._shownFilter = '';
+                  this._journalSearchFromPageEdition = this._currentDoc.documentName === 'JournalEntryPage'
                   await this._refreshSearch();
                 }
                 this._focusedMenuKey = 0;
@@ -378,11 +393,11 @@ export class Autocompleter extends Application {
             }
 
             case "ArrowUp": {
-              this._focusedMenuKey = (this._focusedMenuKey - 1 + this._filteredSearchResults.length+1) % (this._filteredSearchResults.length+1);
+              this._focusedMenuKey = (this._focusedMenuKey - 1 + this._filteredSearchResults.length + resultStartOffset) % (this._filteredSearchResults.length + resultStartOffset);
               break;
             }
             case "ArrowDown": {
-              this._focusedMenuKey = (this._focusedMenuKey + 1) % (this._filteredSearchResults.length+1);
+              this._focusedMenuKey = (this._focusedMenuKey + 1) % (this._filteredSearchResults.length + resultStartOffset);
               break;
             }
 
@@ -489,7 +504,7 @@ export class Autocompleter extends Application {
     // if there's at least one result, select it  
     this._filteredSearchResults = this._getFilteredSearchResults();
     if (this._filteredSearchResults.length >=1) {
-      this._focusedMenuKey = 1;
+      this._focusedMenuKey = this._journalSearchFromPageEdition ? 2 : 1;
     } else {
       // select create/whole journal option
       this._focusedMenuKey = 0;
@@ -581,6 +596,7 @@ export class Autocompleter extends Application {
     this._searchDocType = docType;
     this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
     this._focusedMenuKey = 0;
+    this._journalSearchFromPageEdition = docType === ValidDocType.Journal && this._currentDoc.documentName === 'JournalEntryPage'
     await this._refreshSearch();
   }
 
