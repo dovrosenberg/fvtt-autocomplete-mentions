@@ -51,6 +51,7 @@ export class Autocompleter extends Application {
   private _searchDocType = null as ValidDocType | null;   // if we're in doc search mode, the key of the docType to search
   private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
   private _shownFilter = '' as string;    // current filter for doc search
+  private _lastJournalSearch = '';
 
   // search results
   private _lastPulledSearchResults = [] as SearchResult[];  // all of the results we got back last time
@@ -328,6 +329,7 @@ export class Autocompleter extends Application {
                   this._selectedJournal = {...journal};
 
                   // reset search
+                  this._lastJournalSearch = this._shownFilter;
                   this._shownFilter = '';
                   this._focusedMenuKey = 0;   // use whole journal
                   this._journalSearchFromPageEdition = false;
@@ -370,7 +372,7 @@ export class Autocompleter extends Application {
                 } else {
                   // journal search
                   this._currentMode = AutocompleteMode.docSearch;
-                  this._shownFilter = '';
+                  this._shownFilter = this._lastJournalSearch;
                   this._journalSearchFromPageEdition = this._currentDoc.documentName === 'JournalEntryPage'
                   await this._refreshSearch();
                 }
