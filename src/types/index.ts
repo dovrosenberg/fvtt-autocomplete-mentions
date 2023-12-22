@@ -16,6 +16,7 @@ export type SearchResult = {
   uuid: string;
   name: string;
   pages: EmbeddedCollection<any, any> | null;
+  journal: JournalEntry | null
 }
 
 export enum ValidDocType {

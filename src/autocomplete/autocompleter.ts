@@ -105,7 +105,7 @@ export class Autocompleter extends Application {
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
         journalSearchFromPageEdition: this._journalSearchFromPageEdition,
-        firstSearchIdx: this._journalSearchFromPageEdition ? 2 : 1,
+        firstSearchIdx: this._journalSearchFromPageEdition || this._currentMode === AutocompleteMode.journalPageSearch ? 2 : 1,
         journalName: this._selectedJournal?.name,
         docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
         highlightedEntry: this._focusedMenuKey,
@@ -306,7 +306,7 @@ export class Autocompleter extends Application {
           // Before the searche result we can have one or two specion command:
           //   - Create New (always there)
           //   - Select current Journal (in search journal page only)
-          const resultStartOffset = this._journalSearchFromPageEdition ? 2 : 1;
+          const resultStartOffset = this._journalSearchFromPageEdition || this._currentMode == AutocompleteMode.journalPageSearch ? 2 : 1;
           switch (event.key) {
             case 'Enter': {
               if (this._currentMode===AutocompleteMode.docSearch) {
@@ -324,13 +324,25 @@ export class Autocompleter extends Application {
                     ? {
                       uuid: this._currentDoc.parent.uuid,
                       name: this._currentDoc.parent.name,
-                      pages: this._currentDoc.parent.pages }
+                      pages: this._currentDoc.parent.pages,
+                      journal: this._currentDoc.parent
+                      }
                     : this._filteredSearchResults[this._focusedMenuKey - 2];
                   this._selectedJournal = {...journal};
 
                   // reset search
                   this._lastJournalSearch = this._shownFilter;
-                  this._shownFilter = '';
+                  this._shownFilter = (() => {
+                    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+                    // If there is a selected texte in the editor and
+                    // it was not use as filter to select the journal:
+                    // but back the selectge text as filter for the page.
+                    if (selectedTextInEditor &&
+                        (this._focusedMenuKey === 1 || this._shownFilter !== selectedTextInEditor))
+                      return selectedTextInEditor ;
+                      
+                    return '';
+                  })();
                   this._focusedMenuKey = 0;   // use whole journal
                   this._journalSearchFromPageEdition = false;
                   await this._refreshSearch();
@@ -346,13 +358,17 @@ export class Autocompleter extends Application {
                 }
               } else {
                 // handle journal page select
-                // if it's 0, we just add a reference to the whole journal
+                // if it's 0, we are creating a new page.
                 if (!this._focusedMenuKey) {
+                  this._createDocument(this._searchDocType);
+                }
+                // if it's 1, we just add a reference to the whole journal
+                else if (this._focusedMenuKey === 1) {
                   this._insertReferenceAndClose(this._selectedJournal.uuid);
                 } else {
                   // pages have to be entered as a UUID
                   // get the clicked item
-                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
+                  const item = this._filteredSearchResults[this._focusedMenuKey-2];
 
                   // insert the appropriate text
                   if (item) {
@@ -577,7 +593,16 @@ export class Autocompleter extends Application {
     this._lastPulledRowCount = results.length;
 
     // pages OK here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({uuid: item.uuid, name: item.name, pages: this._searchDocType===ValidDocType.Journal ? item.pages : undefined})) as SearchResult[];  
+    this._lastPulledSearchResults = results.map((item) => {
+      if (this._searchDocType === ValidDocType.Journal)
+        return {
+          uuid: item.uuid,
+          name: item.name,
+          pages: item.pages,
+          journal: item
+        }
+      return { uuid: item.uuid, name: item.name }
+    }) as SearchResult[];  
     return;
   }
 
@@ -628,7 +653,9 @@ export class Autocompleter extends Application {
   }
 
   private _insertReferenceAndClose(uuid: string): void {
-    this._insertTextAndClose(`@UUID[${uuid}]`);
+    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+    const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
+    this._insertTextAndClose(`@UUID[${uuid}]${label}`);
   }
 
   private _insertTextAndClose(text: string): void {
@@ -642,20 +669,49 @@ export class Autocompleter extends Application {
     if (!docTypeInfo)
       return;
 
-    const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
+    const { pack, folder, parent, sort, documentName } = (() => {
+      const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
+      const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
+      // If we are creating a new page in a journal, set the journal as parent
+      // and add it at the end of the journal.
+      if (this._currentMode === AutocompleteMode.journalPageSearch) 
+        return {
+          parent: this._selectedJournal.journal,
+          sort: (this._selectedJournal.journal!.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY,
+          pack: null,
+          folder: null,
+          documentName: 'JournalEntryPage'
+        };
+      // If we are creating a new entry of the same type of the document we are editing,
+      // create it in the same pack/compedium and folder.
+      if (curMainDoc.documentName === collection.documentName)
+        return {
+          parent: null,
+          sort: null,
+          pack: curMainDoc.compendium?.collection,
+          folder: curMainDoc.folder?.id,
+          documentName: collection.documentName
+        }
+      
+      return {
+        parent: null,
+        sort: null,
+        pack: null,
+        folder: null,
+        documentName: collection.documentName
+      }
+    })();
 
     // Use de current filter as default name
-    const data = { folder: this._currentDoc.parent.folder.id, name: this._shownFilter };
-    const options = {width: 320, left: 300, top: 300 };
+    const data = { folder, name: this._shownFilter, sort };
+    const options = { width: 320, left: 300, top: 300, pack, parent };
 
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
     const selection = this._editor.ownerDocument.getSelection();
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
-    //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;
-
-    const cls = getDocumentClass(collection.documentName);
+    const cls = getDocumentClass(documentName);
     cls.createDialog(data, options).then((result) => {
       if (result) {
         // Check if we had a default name and if the user did not change it.
