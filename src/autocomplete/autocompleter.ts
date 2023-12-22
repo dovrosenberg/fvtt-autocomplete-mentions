@@ -583,14 +583,29 @@ export class Autocompleter extends Application {
 
     // pages OK here despite typescript
     this._lastPulledSearchResults = results.map((item) => {
+      const pack = (() => {
+        // There is no compendium to display in name if the result is not from one.
+        if (!item.pack)
+          return '';
+
+        // When the result is in the same compendium explicitly show it.
+        const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
+        if (curMainDoc.compendium?.collection === item.pack)
+          return ` (this compendium)`;
+        
+        return ` (${item.pack})`;
+      })();
+
+      const name = `${item.name}${pack}`;
+
       if (this._searchDocType === ValidDocType.Journal)
         return {
           uuid: item.uuid,
-          name: item.name,
+          name,
           pages: item.pages,
           journal: item
         }
-      return { uuid: item.uuid, name: item.name }
+      return { uuid: item.uuid, name }
     }) as SearchResult[];  
     return;
   }
