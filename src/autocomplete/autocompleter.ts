@@ -353,12 +353,12 @@ export class Autocompleter extends Application {
                   this._createDocument(this._searchDocType);
                 }
                 // if it's 1, we just add a reference to the whole journal
-                else if (!this._focusedMenuKey === 1) {
+                else if (this._focusedMenuKey === 1) {
                   this._insertReferenceAndClose(this._selectedJournal.uuid);
                 } else {
                   // pages have to be entered as a UUID
                   // get the clicked item
-                  const item = this._filteredSearchResults[this._focusedMenuKey-1];
+                  const item = this._filteredSearchResults[this._focusedMenuKey-2];
 
                   // insert the appropriate text
                   if (item) {
