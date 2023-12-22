@@ -546,6 +546,31 @@ export class Autocompleter extends Application {
       //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
     }
 
+    const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
+    // Only check compediums if we are not overflowing the windows,
+    // and if csetings indicates to includes some compediums
+    if (results.length < OVERFLOW_LENGTH) {
+      const INCL_COMP = moduleSettings.get(SettingKeys.includedCompedium) as string;
+      if (INCL_COMP) {
+        const compendiums = INCL_COMP.split(',');
+
+        const query = SearchFilter.cleanQuery(this._shownFilter);
+        const queryRegex = new RegExp(RegExp.escape(query), "i");
+        for (const compendium of compendiums) {
+          const COMP_REG = new RegExp(compendium);
+          const compMatchs = getGame().packs.filter(p => COMP_REG.test(p.collection) && p.documentName === docType.referenceText);
+          for (const compMatch of compMatchs) {
+            if (results.length >= OVERFLOW_LENGTH)
+              break;
+
+            const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
+            const matchdocs = await compMatch.getDocuments({ _id__in: matchs });
+            results = results.concat(matchdocs);
+          }
+        }
+      }
+    }
+
     // remove any null names (which Foundry allows)
     results = results.filter((item)=>(item.name));
 

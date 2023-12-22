@@ -4,7 +4,7 @@ import moduleJson from '@module';
 export enum SettingKeys {
   // displayed in settings
   resultLength = 'resultLength',
-
+  includedCompedium = 'includedCompedium'
   // internal only
 }
 
@@ -59,6 +59,13 @@ export class ModuleSettings {
       default: 5,
       type: Number,
     },
+    {
+      settingID: SettingKeys.includedCompedium,
+      name: 'acm.settings.includedCompedium',
+      hint: 'acm.settings.includedCompediumHelp',
+      default: '',
+      type: String,
+    }
   ];
 
   // these are client-specific and displayed in settings
