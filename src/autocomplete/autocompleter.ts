@@ -332,7 +332,17 @@ export class Autocompleter extends Application {
 
                   // reset search
                   this._lastJournalSearch = this._shownFilter;
-                  this._shownFilter = '';
+                  this._shownFilter = (() => {
+                    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+                    // If there is a selected texte in the editor and
+                    // it was not use as filter to select the journal:
+                    // but back the selectge text as filter for the page.
+                    if (selectedTextInEditor &&
+                        (this._focusedMenuKey === 1 || this._shownFilter !== selectedTextInEditor))
+                      return selectedTextInEditor ;
+                      
+                    return '';
+                  })();
                   this._focusedMenuKey = 0;   // use whole journal
                   this._journalSearchFromPageEdition = false;
                   await this._refreshSearch();
