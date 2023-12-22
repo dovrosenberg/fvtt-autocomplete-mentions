@@ -628,7 +628,9 @@ export class Autocompleter extends Application {
   }
 
   private _insertReferenceAndClose(uuid: string): void {
-    this._insertTextAndClose(`@UUID[${uuid}]`);
+    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+    const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
+    this._insertTextAndClose(`@UUID[${uuid}]${label}`);
   }
 
   private _insertTextAndClose(text: string): void {
