@@ -619,9 +619,14 @@ export class Autocompleter extends Application {
 
     const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
 
+    // If we are creating a new entry of the same type of the document we are editing,
+    // create it in the same pack/compedium and folder.
+    const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
+    const curPack = (curMainDoc.documentName === collection.documentName) ? curMainDoc.compendium?.collection: null;
+    const curFolder = (curMainDoc.documentName === collection.documentName) ? curMainDoc.folder?.id : null;
     // Use de current filter as default name
-    const data = { folder: this._currentDoc.parent.folder.id, name: this._shownFilter };
-    const options = {width: 320, left: 300, top: 300 };
+    const data = { folder: curFolder, name: this._shownFilter };
+    const options = { width: 320, left: 300, top: 300, pack: curPack };
 
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
