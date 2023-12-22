@@ -550,41 +550,30 @@ export class Autocompleter extends Application {
       return;
     }
 
+    const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
+    let results = [] as DocumentType[];
+
+    const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
+    const curCompedium = curMainDoc.compendium?.collection;
+
+    if (curCompedium) {
+        results = await this._searchCompediums(OVERFLOW_LENGTH, docType.referenceText);
+    }
+
     const collection = getGame()[docType.collectionName] as DocumentType;
 
     // note that current typescript definitions don't know about search() function
-    let results: DocumentType[];
+    
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
     if (FULL_TEXT_SEARCH) {
-      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
+      results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType[]);
     } else {
-      results=[];
-      //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
+      //results.concat(collection.search({query: this._shownFilter, filters: [nameFilter]}));
     }
 
-    const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
-    // Only check compediums if we are not overflowing the windows,
-    // and if csetings indicates to includes some compediums
-    if (results.length < OVERFLOW_LENGTH) {
-      const INCL_COMP = moduleSettings.get(SettingKeys.includedCompedium) as string;
-      if (INCL_COMP) {
-        const compendiums = INCL_COMP.split(',');
-
-        const query = SearchFilter.cleanQuery(this._shownFilter);
-        const queryRegex = new RegExp(RegExp.escape(query), "i");
-        for (const compendium of compendiums) {
-          const COMP_REG = new RegExp(compendium);
-          const compMatchs = getGame().packs.filter(p => COMP_REG.test(p.collection) && p.documentName === docType.referenceText);
-          for (const compMatch of compMatchs) {
-            if (results.length >= OVERFLOW_LENGTH)
-              break;
-
-            const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
-            const matchdocs = await compMatch.getDocuments({ _id__in: matchs });
-            results = results.concat(matchdocs);
-          }
-        }
-      }
+    if (!curCompedium) {
+      const compediumResult = await this._searchCompediums(OVERFLOW_LENGTH - results.length, docType.referenceText);
+      results = results.concat(compediumResult);
     }
 
     // remove any null names (which Foundry allows)
@@ -641,6 +630,37 @@ export class Autocompleter extends Application {
     this._lastPulledSearchResults = results.map((item)=>({ uuid: item.uuid, name: item.name, pages: null})) as SearchResult[];
 
     return;
+  }
+
+  private async _searchCompediums(maxResultCount: number, documentName: string) {
+    let results = [] as DocumentType[];
+    if (maxResultCount < 1)
+      return results;
+
+    const INCL_COMP = moduleSettings.get(SettingKeys.includedCompedium) as string;
+    if (!INCL_COMP)
+      return results;
+
+    const query = SearchFilter.cleanQuery(this._shownFilter);
+    const queryRegex = new RegExp(RegExp.escape(query), "i");
+
+    const compendiums = INCL_COMP.split(',');
+    for (const compendium of compendiums) {
+      const compendiumRegEx = new RegExp(compendium);
+      const compMatchs = getGame().packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
+      for (const compMatch of compMatchs) {
+        //if (results.length >= OVERFLOW_LENGTH)
+
+        const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
+        const matchdocs = (await compMatch.getDocuments({ _id__in: matchs })) as DocumentType[];
+        results = results.concat(matchdocs);
+
+        if (results.length >= maxResultCount)
+          break;
+      }
+    }
+
+    return results;
   }
 
   private async _moveToDocSearch(docType: ValidDocType) {
