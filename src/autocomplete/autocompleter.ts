@@ -324,7 +324,9 @@ export class Autocompleter extends Application {
                     ? {
                       uuid: this._currentDoc.parent.uuid,
                       name: this._currentDoc.parent.name,
-                      pages: this._currentDoc.parent.pages }
+                      pages: this._currentDoc.parent.pages,
+                      journal: this._currentDoc.parent
+                      }
                     : this._filteredSearchResults[this._focusedMenuKey - 2];
                   this._selectedJournal = {...journal};
 
