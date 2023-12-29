@@ -13,7 +13,7 @@ export type WindowPosition = {
 export type SearchResult = {
   uuid: string;
   name: string;
-  parentJournal: JournalEntry11 | null
+  parentJournal?: JournalEntry11
 }
 
 export enum ValidDocType {

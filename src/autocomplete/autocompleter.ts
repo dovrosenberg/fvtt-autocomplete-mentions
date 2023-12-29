@@ -602,7 +602,7 @@ export class Autocompleter extends Application {
         return {
           uuid: item.uuid,
           name,
-          journal: item
+          parentJournal: item
         }
       return { uuid: item.uuid, name }
     }) as SearchResult[];
