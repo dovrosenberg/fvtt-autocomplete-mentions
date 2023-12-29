@@ -550,18 +550,20 @@ export class Autocompleter extends Application {
       return;
     }
 
+    // Check how many result make the <...> appear.
     const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
     let results = [] as DocumentType[];
 
     const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
     const curCompedium = curMainDoc.compendium?.collection;
 
+    // If we are editing from a compendium, search compendiums first.
     if (curCompedium) {
         results = await this._searchCompediums(OVERFLOW_LENGTH, docType.referenceText);
     }
 
+    // Check in game document (not in compendium)
     const collection = getGame()[docType.collectionName] as DocumentType11;
-
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
     if (FULL_TEXT_SEARCH) {
       results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType[]);
@@ -569,6 +571,7 @@ export class Autocompleter extends Application {
       //results.concat(collection.search({query: this._shownFilter, filters: [nameFilter]}));
     }
 
+    // If we are not editing from a compendium, search compendiums last.
     if (!curCompedium) {
       const compediumResult = await this._searchCompediums(OVERFLOW_LENGTH - results.length, docType.referenceText);
       results = results.concat(compediumResult);
@@ -644,9 +647,11 @@ export class Autocompleter extends Application {
 
   private async _searchCompediums(maxResultCount: number, documentName: string) {
     let results = [] as DocumentType[];
+    // No need to do anything if there is no place for any result.
     if (maxResultCount < 1)
       return results;
 
+    // Check in the settings what are the compendium to include.
     const INCL_COMP = moduleSettings.get(SettingKeys.includedCompedium) as string;
     if (!INCL_COMP)
       return results;
