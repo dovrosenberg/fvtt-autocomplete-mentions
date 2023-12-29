@@ -1,7 +1,7 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame, localize } from '@/utils/game';
-import { DocumentType, ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType } from '@/types';
+import { DocumentType, ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11 } from '@/types';
 import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
   /* so here's the flow...
@@ -63,7 +63,7 @@ export class Autocompleter extends Application {
   constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void) {
     super();
 
-    this._currentDoc = ui.activeWindow.document;
+    this._currentDoc = (ui as ui11).activeWindow.document;
 
     log(false, 'Autocompleter construction');
 
@@ -324,8 +324,7 @@ export class Autocompleter extends Application {
                     ? {
                       uuid: this._currentDoc.parent.uuid,
                       name: this._currentDoc.parent.name,
-                      pages: this._currentDoc.parent.pages,
-                      journal: this._currentDoc.parent
+                      parentJournal: this._currentDoc.parent
                       }
                     : this._filteredSearchResults[this._focusedMenuKey - 2];
                   this._selectedJournal = {...journal};
@@ -360,7 +359,7 @@ export class Autocompleter extends Application {
                 // handle journal page select
                 // if it's 0, we are creating a new page.
                 if (!this._focusedMenuKey) {
-                  this._createDocument(this._searchDocType);
+                  this._createDocument(this._searchDocType!);
                 }
                 // if it's 1, we just add a reference to the whole journal
                 else if (this._focusedMenuKey === 1) {
@@ -490,6 +489,7 @@ export class Autocompleter extends Application {
     if (FULL_TEXT_SEARCH) { // TODO
       retval = this._lastPulledSearchResults;  // we don't know enough to filter any more (other than length of list)
     } else {
+      retval = [];
       //retval = this._lastPulledSearchResults.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
     }
 
@@ -560,10 +560,8 @@ export class Autocompleter extends Application {
         results = await this._searchCompediums(OVERFLOW_LENGTH, docType.referenceText);
     }
 
-    const collection = getGame()[docType.collectionName] as DocumentType;
+    const collection = getGame()[docType.collectionName] as DocumentType11;
 
-    // note that current typescript definitions don't know about search() function
-    
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
     if (FULL_TEXT_SEARCH) {
       results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType[]);
@@ -581,7 +579,6 @@ export class Autocompleter extends Application {
 
     this._lastPulledRowCount = results.length;
 
-    // pages OK here despite typescript
     this._lastPulledSearchResults = results.map((item) => {
       const pack = (() => {
         // There is no compendium to display in name if the result is not from one.
@@ -602,11 +599,10 @@ export class Autocompleter extends Application {
         return {
           uuid: item.uuid,
           name,
-          pages: item.pages,
           journal: item
         }
       return { uuid: item.uuid, name }
-    }) as SearchResult[];  
+    }) as SearchResult[];
     return;
   }
 
@@ -622,11 +618,10 @@ export class Autocompleter extends Application {
     this._lastPulledFilter = this._shownFilter;
     this._lastPulledType = null;  
 
-    const collection = this._selectedJournal.pages;
+    const collection = this._selectedJournal?.parentJournal?.pages;
     if (!collection)
       return;
 
-    // note that current typescript definitions don't know about search() function
     let results: DocumentType[];
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; for now it doesn't seem to matter
     if (FULL_TEXT_SEARCH) {
@@ -642,7 +637,7 @@ export class Autocompleter extends Application {
     this._lastPulledRowCount = results.length;
 
     // uuid ok here despite typescript
-    this._lastPulledSearchResults = results.map((item)=>({ uuid: item.uuid, name: item.name, pages: null})) as SearchResult[];
+    this._lastPulledSearchResults = results.map((item)=>({ uuid: item.uuid, name: item.name})) as SearchResult[];
 
     return;
   }
@@ -711,11 +706,11 @@ export class Autocompleter extends Application {
       // and add it at the end of the journal.
       if (this._currentMode === AutocompleteMode.journalPageSearch) 
         return {
-          parent: this._selectedJournal.journal,
-          sort: (this._selectedJournal.journal!.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY,
+          parent: this._selectedJournal.parentJournal,
+          sort: (this._selectedJournal.parentJournal!.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY,
           pack: null,
           folder: null,
-          documentName: 'JournalEntryPage'
+          documentName: 'JournalEntryPage' 
         };
       // If we are creating a new entry of the same type of the document we are editing,
       // create it in the same pack/compedium and folder.
@@ -746,15 +741,15 @@ export class Autocompleter extends Application {
     const selection = this._editor.ownerDocument.getSelection();
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
-    const cls = getDocumentClass(documentName);
+    const cls = getDocumentClass(documentName) as any;
     cls.createDialog(data, options).then((result) => {
       if (result) {
         // Check if we had a default name and if the user did not change it.
         // Foundry override the name if the user enter nothing.
         //    Check if foundry use it's default name and change it to our.
         if (this._shownFilter.length > 0) {
-          const label = game.i18n.localize(cls.metadata.label);
-          const docDefaultName = game.i18n.format("DOCUMENT.New", { type: label });
+          const label = (game as any).i18n.localize(cls.metadata.label);
+          const docDefaultName = (game as any).i18n.format("DOCUMENT.New", { type: label });
           if (result.name.startsWith(docDefaultName)) {
             result.update({ name: this._shownFilter });
           }
