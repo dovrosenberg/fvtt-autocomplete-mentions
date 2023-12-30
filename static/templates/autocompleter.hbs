@@ -23,9 +23,11 @@
             <li class="acm-static-entry flexrow">
               Searching pages for '{{shownFilter}}'
             </li>
-            <li><hr></li> <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
-              Create new...
-            </li><li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
+            <li><hr></li> 
+            <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
+              Create new page...
+            </li>
+            <li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
               Link whole journal entry
             </li>
           {{else}}
@@ -36,10 +38,10 @@
             <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
               Create new...
             </li>
-            {{#if journalSearchFromPageEdition}}
-            <li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="1">
-              Search page in current journal...
-            </li>
+            {{#if searchingFromJournalPage}}
+              <li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="1">
+                Current journal...
+              </li>
             {{/if}}
           {{/if}}
 

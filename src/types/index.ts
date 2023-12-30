@@ -24,8 +24,6 @@ export enum ValidDocType {
   Scene,
 }
 
-export type DocumentType = Actor | Scene | JournalEntry | RollTable | Item;
-
 export enum EditorType {
   ProseMirror,
   TinyMCE
@@ -38,7 +36,7 @@ export type ui11 = typeof ui & {
   activeWindow: DocumentSheet
 }
 
-export type DocumentType11 = DocumentType & {
+export type DocumentType11 = (Actor | Scene | JournalEntry | RollTable | Item) & {
   search(options: { query: string, filters?: string[], exclude?: string[] })
 }
 

@@ -1,7 +1,7 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame, localize } from '@/utils/game';
-import { DocumentType, ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11 } from '@/types';
+import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11 } from '@/types';
 import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
   /* so here's the flow...
@@ -43,7 +43,7 @@ export class Autocompleter extends Application {
   private _editor: HTMLElement;    // the editor element
   private _editorType: EditorType;   // the type of editor we're supporting
   private _currentDoc: any;    // current document being edited
-  private _journalSearchFromPageEdition = false;    // Indicates if the app is oppened from a page edition and we are serching for a journal.
+  private _searchingFromJournalPage = false;    // are we searching from a journal page (used to let us more quickly search within that journal)
 
   // status
   private _currentMode: AutocompleteMode;
@@ -104,8 +104,8 @@ export class Autocompleter extends Application {
         singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
         docSearch: this._currentMode===AutocompleteMode.docSearch,
         journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
-        journalSearchFromPageEdition: this._journalSearchFromPageEdition,
-        firstSearchIdx: this._journalSearchFromPageEdition || this._currentMode === AutocompleteMode.journalPageSearch ? 2 : 1,
+        searchingFromJournalPage: this._searchingFromJournalPage,
+        firstSearchIdx: this._initialSearchOffset(),
         journalName: this._selectedJournal?.name,
         docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
         highlightedEntry: this._focusedMenuKey,
@@ -306,34 +306,38 @@ export class Autocompleter extends Application {
           // Before the searche result we can have one or two specion command:
           //   - Create New (always there)
           //   - Select current Journal (in search journal page only)
-          const resultStartOffset = this._journalSearchFromPageEdition || this._currentMode == AutocompleteMode.journalPageSearch ? 2 : 1;
+          const resultStartOffset = this._initialSearchOffset();
           switch (event.key) {
             case 'Enter': {
               if (this._currentMode===AutocompleteMode.docSearch) {
                 if (this._searchDocType === null) return;
 
                 // if it's 0, pop up the add item dialog
-                if (!this._focusedMenuKey) {
+                if (this._focusedMenuKey===0) {
                   this._createDocument(this._searchDocType);
                 } else if (this._searchDocType===ValidDocType.Journal) {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
 
                   // get the clicked journal
-                  const journal = this._focusedMenuKey === 1   // Check if we selected the current journal special command.
-                    ? {
+                  let journal;
+                  if (this._focusedMenuKey===1) {
+                    // the current journal special command
+                    journal = {
                       uuid: this._currentDoc.parent.uuid,
                       name: this._currentDoc.parent.name,
                       parentJournal: this._currentDoc.parent
-                      }
-                    : this._filteredSearchResults[this._focusedMenuKey - 2];
+                      };
+                  } else {
+                    journal = this._filteredSearchResults[this._focusedMenuKey - 2];
+                  }
                   this._selectedJournal = {...journal};
 
                   // reset search
                   this._lastJournalSearch = this._shownFilter;
                   this._shownFilter = (() => {
                     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
-                    // If there is a selected texte in the editor and
+                    // If there is a selected text in the editor and
                     // it was not use as filter to select the journal:
                     // but back the selectge text as filter for the page.
                     if (selectedTextInEditor &&
@@ -343,7 +347,8 @@ export class Autocompleter extends Application {
                     return '';
                   })();
                   this._focusedMenuKey = 0;   // use whole journal
-                  this._journalSearchFromPageEdition = false;
+                  this._searchingFromJournalPage = false;
+
                   await this._refreshSearch();
                 } else {
                   // get the clicked item
@@ -361,13 +366,15 @@ export class Autocompleter extends Application {
                 if (!this._focusedMenuKey) {
                   this._createDocument(this._searchDocType!);
                 }
-                // if it's 1, we just add a reference to the whole journal
+                // if it's 1 (and we're not searching current journal), we just add a reference to the whole journal
                 else if (this._focusedMenuKey === 1) {
                   this._insertReferenceAndClose(this._selectedJournal.uuid);
                 } else {
+                  const numFixedEntries = 2;
+
                   // pages have to be entered as a UUID
                   // get the clicked item
-                  const item = this._filteredSearchResults[this._focusedMenuKey-2];
+                  const item = this._filteredSearchResults[this._focusedMenuKey-numFixedEntries];
 
                   // insert the appropriate text
                   if (item) {
@@ -388,7 +395,8 @@ export class Autocompleter extends Application {
                   // journal search
                   this._currentMode = AutocompleteMode.docSearch;
                   this._shownFilter = this._lastJournalSearch;
-                  this._journalSearchFromPageEdition = this._currentDoc.documentName === 'JournalEntryPage'
+                  this._lastJournalSearch = '';
+                  this._searchingFromJournalPage = (this._currentDoc.documentName === 'JournalEntryPage');
                   await this._refreshSearch();
                 }
                 this._focusedMenuKey = 0;
@@ -520,9 +528,10 @@ export class Autocompleter extends Application {
     }
 
     // if there's at least one result, select it  
+    // TODO - check this... should it be >=2 when _searchingFromJournalPage
     this._filteredSearchResults = this._getFilteredSearchResults();
     if (this._filteredSearchResults.length >=1) {
-      this._focusedMenuKey = this._journalSearchFromPageEdition ? 2 : 1;
+      this._focusedMenuKey = this._initialSearchOffset();
     } else {
       // select create/whole journal option
       this._focusedMenuKey = 0;
@@ -540,7 +549,7 @@ export class Autocompleter extends Application {
     }
 
     this._lastPulledFilter = this._shownFilter;
-    this._lastPulledType = this._searchDocType;  
+    this._lastPulledType = this._searchDocType;
 
     const docType = docTypes.find((d)=>(d.type===this._searchDocType));
     if (!docType?.collectionName) {
@@ -552,7 +561,7 @@ export class Autocompleter extends Application {
 
     // Check how many result make the <...> appear.
     const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
-    let results = [] as DocumentType[];
+    let results = [] as DocumentType11[];
 
     const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
     const curCompedium = curMainDoc.compendium?.collection;
@@ -566,7 +575,7 @@ export class Autocompleter extends Application {
     const collection = getGame()[docType.collectionName] as DocumentType11;
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
     if (FULL_TEXT_SEARCH) {
-      results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType[]);
+      results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType11[]);
     } else {
       //results.concat(collection.search({query: this._shownFilter, filters: [nameFilter]}));
     }
@@ -625,10 +634,10 @@ export class Autocompleter extends Application {
     if (!collection)
       return;
 
-    let results: DocumentType[];
+    let results: DocumentType11[];
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; for now it doesn't seem to matter
     if (FULL_TEXT_SEARCH) {
-      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
+      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType11[];
     } else {
       results=[];
       //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
@@ -639,27 +648,27 @@ export class Autocompleter extends Application {
 
     this._lastPulledRowCount = results.length;
 
-    // uuid ok here despite typescript
     this._lastPulledSearchResults = results.map((item)=>({ uuid: item.uuid, name: item.name})) as SearchResult[];
 
     return;
   }
 
-  private async _searchCompediums(maxResultCount: number, documentName: string) {
-    let results = [] as DocumentType[];
+  private async _searchCompediums(maxResultCount: number, documentName: string): Promise<DocumentType11[]> {
+    let results = [] as DocumentType11[];
+    
     // No need to do anything if there is no place for any result.
     if (maxResultCount < 1)
       return results;
 
     // Check in the settings what are the compendium to include.
-    const INCL_COMP = moduleSettings.get(SettingKeys.includedCompedium) as string;
-    if (!INCL_COMP)
+    const includedCompendia = moduleSettings.get(SettingKeys.includedCompendia);
+    if (!includedCompendia)
       return results;
 
     const query = SearchFilter.cleanQuery(this._shownFilter);
     const queryRegex = new RegExp(RegExp.escape(query), "i");
 
-    const compendiums = INCL_COMP.split(',');
+    const compendiums = includedCompendia.split(',');
     for (const compendium of compendiums) {
       const compendiumRegEx = new RegExp(compendium);
       const compMatchs = getGame().packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
@@ -667,7 +676,7 @@ export class Autocompleter extends Application {
         //if (results.length >= OVERFLOW_LENGTH)
 
         const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
-        const matchdocs = (await compMatch.getDocuments({ _id__in: matchs })) as DocumentType[];
+        const matchdocs = (await compMatch.getDocuments({ _id__in: matchs })) as DocumentType11[];
         results = results.concat(matchdocs);
 
         if (results.length >= maxResultCount)
@@ -683,7 +692,7 @@ export class Autocompleter extends Application {
     this._searchDocType = docType;
     this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
     this._focusedMenuKey = 0;
-    this._journalSearchFromPageEdition = docType === ValidDocType.Journal && this._currentDoc.documentName === 'JournalEntryPage'
+    this._searchingFromJournalPage = (docType === ValidDocType.Journal && this._currentDoc.documentName === 'JournalEntryPage');
     await this._refreshSearch();
   }
 
@@ -705,10 +714,10 @@ export class Autocompleter extends Application {
       return;
 
     const { pack, folder, parent, sort, documentName } = (() => {
-      const collection = getGame()[docTypeInfo.collectionName] as DocumentType;
+      const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
       const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
       // If we are creating a new page in a journal, set the journal as parent
-      // and add it at the end of the journal.
+      //    and add it at the end of the journal.
       if (this._currentMode === AutocompleteMode.journalPageSearch) 
         return {
           parent: this._selectedJournal.parentJournal,
@@ -717,8 +726,9 @@ export class Autocompleter extends Application {
           folder: null,
           documentName: 'JournalEntryPage' 
         };
+
       // If we are creating a new entry of the same type of the document we are editing,
-      // create it in the same pack/compedium and folder.
+      //    create it in the same pack/compedium and folder.
       if (curMainDoc.documentName === collection.documentName)
         return {
           parent: null,
@@ -747,14 +757,14 @@ export class Autocompleter extends Application {
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
     const cls = getDocumentClass(documentName) as any;
-    cls.createDialog(data, options).then((result) => {
+    cls.createDialog(data, options).then((result: any): void => {
       if (result) {
         // Check if we had a default name and if the user did not change it.
         // Foundry override the name if the user enter nothing.
         //    Check if foundry use it's default name and change it to our.
         if (this._shownFilter.length > 0) {
-          const label = (game as any).i18n.localize(cls.metadata.label);
-          const docDefaultName = (game as any).i18n.format("DOCUMENT.New", { type: label });
+          const label = getGame().i18n.localize(cls.metadata.label);
+          const docDefaultName = getGame().i18n.format("DOCUMENT.New", { type: label });
           if (result.name.startsWith(docDefaultName)) {
             result.update({ name: this._shownFilter });
           }
@@ -772,4 +782,8 @@ export class Autocompleter extends Application {
 
     this.close();
   }
+
+  private _initialSearchOffset = (): number => (
+    this._searchingFromJournalPage || this._currentMode === AutocompleteMode.journalPageSearch ? 2 : 1
+  );
 }

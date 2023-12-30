@@ -3,8 +3,8 @@
     "settings": {
       "resultLength": "Result length",
       "resultLengthHelp": "Number of results to show at a time when searching",
-      "includedCompedium": "Included compedium to search",
-      "includedCompediumHelp": "List of compendiums separated by column to include in search. (RegEx accepted)"
+      "includedCompendia": "Compendia to include when searching",
+      "includedCompendiaHelp": "List of compendia separated by comma (RegEx accepted)"
     },
     "documents": {
       "titles": {
