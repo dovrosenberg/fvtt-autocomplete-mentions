@@ -1,7 +1,7 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame, localize } from '@/utils/game';
-import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11 } from '@/types';
+import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11, JournalEntry11 } from '@/types';
 import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
   /* so here's the flow...
@@ -51,7 +51,7 @@ export class Autocompleter extends Application {
   private _searchDocType = null as ValidDocType | null;   // if we're in doc search mode, the key of the docType to search
   private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
   private _shownFilter = '' as string;    // current filter for doc search
-  private _lastJournalSearch = '';
+  private _lastJournalFilter = '';     // the filter on the journal search (so when we go back there from page search we can save it)
 
   // search results
   private _lastPulledSearchResults = [] as SearchResult[];  // all of the results we got back last time
@@ -327,19 +327,18 @@ export class Autocompleter extends Application {
                       uuid: this._currentDoc.parent.uuid,
                       name: this._currentDoc.parent.name,
                       parentJournal: this._currentDoc.parent
-                      };
+                    };
                   } else {
                     journal = this._filteredSearchResults[this._focusedMenuKey - 2];
                   }
                   this._selectedJournal = {...journal};
 
                   // reset search
-                  this._lastJournalSearch = this._shownFilter;
+                  this._lastJournalFilter = this._shownFilter;
                   this._shownFilter = (() => {
                     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
-                    // If there is a selected text in the editor and
-                    // it was not use as filter to select the journal:
-                    // but back the selectge text as filter for the page.
+                    // If there is a selected text in the editor and it was not use as filter 
+                    //    to select the journal, put back the selected text as filter for the page.
                     if (selectedTextInEditor &&
                         (this._focusedMenuKey === 1 || this._shownFilter !== selectedTextInEditor))
                       return selectedTextInEditor ;
@@ -392,10 +391,10 @@ export class Autocompleter extends Application {
                 if (this._currentMode===AutocompleteMode.docSearch) {
                   this._currentMode = AutocompleteMode.singleAtWaiting;
                 } else {
-                  // journal search
+                  // we're in journal page search mode; go back to journal search
                   this._currentMode = AutocompleteMode.docSearch;
-                  this._shownFilter = this._lastJournalSearch;
-                  this._lastJournalSearch = '';
+                  this._shownFilter = this._lastJournalFilter;
+                  this._lastJournalFilter = '';
                   this._searchingFromJournalPage = (this._currentDoc.documentName === 'JournalEntryPage');
                   await this._refreshSearch();
                 }
@@ -713,43 +712,34 @@ export class Autocompleter extends Application {
     if (!docTypeInfo)
       return;
 
-    const { pack, folder, parent, sort, documentName } = (() => {
-      const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
-      const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
-      // If we are creating a new page in a journal, set the journal as parent
-      //    and add it at the end of the journal.
-      if (this._currentMode === AutocompleteMode.journalPageSearch) 
-        return {
-          parent: this._selectedJournal.parentJournal,
-          sort: (this._selectedJournal.parentJournal!.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY,
-          pack: null,
-          folder: null,
-          documentName: 'JournalEntryPage' 
-        };
+    let pack = null as string | null;
+    let folder = null as string | null;
+    let parent = null as JournalEntry11 | null;
+    let sort = null as number | null;
+    let documentName = '';
 
-      // If we are creating a new entry of the same type of the document we are editing,
+    const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
+    const curMainDoc = (this._currentDoc.parent ?? this._currentDoc) as DocumentType11;
+
+    if (this._currentMode === AutocompleteMode.journalPageSearch) {
+      // We are creating a new page in a journal; set the journal as parent
+      //    and add it at the end of the journal
+      parent = this._selectedJournal.parentJournal as JournalEntry11;
+      sort = (this._selectedJournal.parentJournal!.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY;
+      documentName ='JournalEntryPage'; 
+    } else if (curMainDoc.documentName === collection.documentName) {
+      // We are creating a new entry of the same type of the document we are editing;
       //    create it in the same pack/compedium and folder.
-      if (curMainDoc.documentName === collection.documentName)
-        return {
-          parent: null,
-          sort: null,
-          pack: curMainDoc.compendium?.collection,
-          folder: curMainDoc.folder?.id,
-          documentName: collection.documentName
-        }
-      
-      return {
-        parent: null,
-        sort: null,
-        pack: null,
-        folder: null,
-        documentName: collection.documentName
-      }
-    })();
+      pack = curMainDoc.compendium?.collection;
+      folder = curMainDoc.folder?.id ?? null;
+      documentName = collection.documentName;
+    } else {
+      documentName = collection.documentName;
+    }
 
-    // Use de current filter as default name
+    // Use current filter as default name
     const data = { folder, name: this._shownFilter, sort };
-    const options = { width: 320, left: 300, top: 300, pack, parent };
+    const options = { pack, parent };
 
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
@@ -759,9 +749,13 @@ export class Autocompleter extends Application {
     const cls = getDocumentClass(documentName) as any;
     cls.createDialog(data, options).then((result: any): void => {
       if (result) {
-        // Check if we had a default name and if the user did not change it.
-        // Foundry override the name if the user enter nothing.
-        //    Check if foundry use it's default name and change it to our.
+        // it was created
+
+        // Check if we had a default name and if the user did not change it; if
+        //    so, change it to the filter name
+        // We have to do this because we can't actually prepopulate the name box,
+        //    so we instead change the prompt label and then look for them
+        //    leaving the prompt showing (by typing nothing)
         if (this._shownFilter.length > 0) {
           const label = getGame().i18n.localize(cls.metadata.label);
           const docDefaultName = getGame().i18n.format("DOCUMENT.New", { type: label });
@@ -769,7 +763,6 @@ export class Autocompleter extends Application {
             result.update({ name: this._shownFilter });
           }
         }
-        // it was created
         if (range) {
           selection?.removeAllRanges();
           selection?.addRange(range);
