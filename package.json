@@ -18,9 +18,8 @@
     "tsc": "tsc --noEmit --skipLibCheck",
     "unlinkdata": "unlink ~/foundryData/Data/modules/autocomplete-mentions",
     "buildcopy": "npm run build && npm run copy",
-    "foundry": "node ~/foundry/resources/app/main.js",
-    "foundry10": "node ~/foundry10/resources/app/main.js --dataPath=/home/dov/foundry10data",
-    "version": "node ./scripts/increment-version.js"
+    "foundry": "node $FOUNDRYVTT_APP/resources/app/main.js",
+    "foundry10": "node ~/foundry10/resources/app/main.js --dataPath=/home/dov/foundry10data"
   },
   "devDependencies": {
     "@league-of-foundry-developers/foundry-vtt-types": "9.280.0",
