@@ -4,12 +4,13 @@ import moduleJson from '@module';
 export enum SettingKeys {
   // displayed in settings
   resultLength = 'resultLength',
-
+  includedCompendia = 'includedCompendia'
   // internal only
 }
 
 type SettingType<K extends SettingKeys> =
     K extends SettingKeys.resultLength ? number :
+    K extends SettingKeys.includedCompendia ? string :
     never;  
 
 // the solo instance
@@ -59,6 +60,13 @@ export class ModuleSettings {
       default: 5,
       type: Number,
     },
+    {
+      settingID: SettingKeys.includedCompendia,
+      name: 'acm.settings.includedCompendia',
+      hint: 'acm.settings.includedCompendiaHelp',
+      default: '',
+      type: String,
+    }
   ];
 
   // these are client-specific and displayed in settings

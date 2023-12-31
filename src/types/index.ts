@@ -1,5 +1,3 @@
-import EmbeddedCollection from '@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/abstract/embedded-collection.mjs';
-
 export enum AutocompleteMode {
   singleAtWaiting,  // entered a single @ and waiting for next char to determine what type of search (this is the default when we open it)
   docSearch, // entered a single @ plus a valid document search type
@@ -15,7 +13,7 @@ export type WindowPosition = {
 export type SearchResult = {
   uuid: string;
   name: string;
-  pages: EmbeddedCollection<any, any> | null;
+  parentJournal?: JournalEntry11
 }
 
 export enum ValidDocType {
@@ -26,9 +24,25 @@ export enum ValidDocType {
   Scene,
 }
 
-export type DocumentType = Actor | Scene | JournalEntry | RollTable | Item;
-
 export enum EditorType {
   ProseMirror,
   TinyMCE
+}
+
+// Below are some foundry type amendments.Since Foundry Types are supported up to 10,
+// any definition added by version 11 are below.Those are not real definitions.
+// They are only close enough to make the compilation with fewer false errors.
+export type ui11 = typeof ui & {
+  activeWindow: DocumentSheet
+}
+
+export type DocumentType11 = (Actor | Scene | JournalEntry | RollTable | Item) & {
+  search(options: { query: string, filters?: string[], exclude?: string[] })
+}
+
+export type JournalEntry11 = typeof JournalEntry & {
+  pages: JournalEntry11
+  contents: { at(idx: number): JournalEntry11 }
+  sort: number
+  search(options: { query: string, filters?: string[], exclude?: string[] })
 }
