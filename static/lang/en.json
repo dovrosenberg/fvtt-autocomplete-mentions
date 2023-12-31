@@ -2,7 +2,9 @@
   "acm": {
     "settings": {
       "resultLength": "Result length",
-      "resultLengthHelp": "Number of results to show at a time when searching"
+      "resultLengthHelp": "Number of results to show at a time when searching",
+      "includedCompendia": "Compendia to include when searching",
+      "includedCompendiaHelp": "List of compendia separated by comma (RegEx accepted)"
     },
     "documents": {
       "titles": {

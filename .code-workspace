@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "autocomplete-mentions",
+			"path": "."
+		},
+		{
+			"name": "modules",
+			"path": "/workspaces/data/Data/modules"
+		},
+		{
+			"name": "foundry",
+			"path": "/workspaces/app"
+		}
+	],
+	"settings": {}
+}

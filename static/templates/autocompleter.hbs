@@ -25,6 +25,9 @@
             </li>
             <li><hr></li> 
             <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
+              Create new page...
+            </li>
+            <li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
               Link whole journal entry
             </li>
           {{else}}
@@ -35,10 +38,15 @@
             <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
               Create new...
             </li>
+            {{#if searchingFromJournalPage}}
+              <li class="acm-data-entry flexrow{{#if (eq 1 highlightedEntry)}} highlighted{{/if}}" data-acm-index="1">
+                Current journal...
+              </li>
+            {{/if}}
           {{/if}}
 
           {{#each searchResults}}
-            <li id="menu-item-{{acm-add @index 1}}" class="acm-data-entry flexrow{{#if (eq (acm-add @index 1) ../highlightedEntry)}} highlighted{{/if}}" data-acm-index="{{acm-add @index 1}}">
+            <li id="menu-item-{{acm-add @index ../firstSearchIdx}}" class="acm-data-entry flexrow{{#if (eq (acm-add @index ../firstSearchIdx) ../highlightedEntry)}} highlighted{{/if}}" data-acm-index="{{acm-add @index ../firstSearchIdx}}">
               <span class="acm-key">{{{name}}}</span>
             </li>
           {{/each}}
