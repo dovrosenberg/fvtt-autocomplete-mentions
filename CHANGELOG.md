@@ -1,5 +1,21 @@
 # Change Log
 
+## v1.1.0 - Lots of new features!
+![](https://img.shields.io/badge/release%20date-December%2031%2C%202023-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.1.0/module.zip)
+
+Many usability improvements, thanks to Sylvercode
+- Use selected text as initial search input
+  - Selected text will also be preserved as a manual label
+- Use the current filter as the default text when creating a new item
+- Easy ability to reference the current journal (when editing from inside a journal)
+- Ability to search compendia (and a setting to indicate which ones)
+- Ability to create a page in a journal
+- When creating a new document of the same type as the one being edited, put it in the same folder
+
+Also a bug fix (ditto on the credit):
+- Give focus back to the editor when closing the search box
+
 ## v1.0.1 - URL fix in module.json
 ![](https://img.shields.io/badge/release%20date-December%202%2C%202023-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.0.1/module.zip)
