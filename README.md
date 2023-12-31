@@ -60,13 +60,19 @@ I'm happy to do this for free, as I primarily work on things I like to use mysel
 Autocomplete Mentions is the result of the effort of many people (whether they know it or not). Please refer to [CREDITS.md](https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/CREDITS.md) for the full list.
 
 ## How to Contribute
-
-When using [VSCode](https://code.visualstudio.com/), you can start a [dev container](https://code.visualstudio.com/docs/devcontainers/create-dev-container) for this repository. Before building it, be sure to have those environement variables sets:
-
+You can build the project either with local node or using a dev container.  In either case, make sure these environment variables are set:
 ```
 FOUNDRYVTT_APP=<absolute path to your foundry installation>
 FOUNDRYVTT_DATA=<absolute path to your foundry data directory>
 ```
+
+### Natively
+`npm install` to get started.
+
+`npm run linkdata` will create a symlink between the output directory and your foundry modules data.  Then `npm run debug` will compile the project and update Foundry.  You'll still need to activate the module in your game to test it.
+
+### Using a dev container
+When using [VSCode](https://code.visualstudio.com/), you can start a [dev container](https://code.visualstudio.com/docs/devcontainers/create-dev-container) for this repository. 
 
 Once in VSCode-RemoteContainer, use `File: Open workspace from file...` to open the `.code-workspace` file. It will give you acces to the current module, all installed modules and the foundry app to debug.
 
