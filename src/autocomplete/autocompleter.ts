@@ -69,17 +69,19 @@ export class Autocompleter extends Application {
 
     this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
 
-    this.render();
+    void this.render();
   }
 
   static get defaultOptions(): ApplicationOptions {
-    const options = super.defaultOptions;
+    const options = {
+      ...super.defaultOptions,
 
-    options.classes = ['acm-autocomplete'];
-    options.template = `modules/${moduleJson.id}/templates/autocompleter.hbs`,
-    options.popOut = false;
-    options.resizable = false;
-    options.height = 'auto';
+      classes: ['acm-autocomplete'],
+      template: `modules/${moduleJson.id}/templates/autocompleter.hbs`,
+      popOut: false,
+      resizable: false,
+      height: 'auto',
+    } as ApplicationOptions;
 
     return options;
   }
@@ -87,24 +89,24 @@ export class Autocompleter extends Application {
   // moves this to a new target (in the case of a re-render, for instance)
   retarget(newTarget) {
     this._editor = newTarget;
-    this.render();
+    void this.render();
   }
 
   // this provides fields that will be available in the template; called by parent class
   public async getData(): Promise<any> {
     const data = {
-        ...(await super.getData()),
-        location: this._location,
-        docTypes: docTypes,
-        singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
-        docSearch: this._currentMode===AutocompleteMode.docSearch,
-        journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
-        journalName: this._selectedJournal?.name,
-        docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
-        highlightedEntry: this._focusedMenuKey,
-        searchResults: this._filteredSearchResults,
-        shownFilter: this._shownFilter,
-        hasMore: (this._lastPulledRowCount || 0) > (this._filteredSearchResults?.length || 0),
+      ...(await super.getData()),
+      location: this._location,
+      docTypes: docTypes,
+      singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
+      docSearch: this._currentMode===AutocompleteMode.docSearch,
+      journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
+      journalName: this._selectedJournal?.name,
+      docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
+      highlightedEntry: this._focusedMenuKey,
+      searchResults: this._filteredSearchResults,
+      shownFilter: this._shownFilter,
+      hasMore: (this._lastPulledRowCount || 0) > (this._filteredSearchResults?.length || 0),
     };
     //log(false, data);
 
@@ -144,9 +146,9 @@ export class Autocompleter extends Application {
           this._editor.ownerDocument.removeEventListener('pointerdown', this._onPointerDown);
         }
       } else if (!wrapper.contains(event.target as Node)) {
-        this.close(); 
+        void this.close(); 
       }
-    }
+    };
 
     // activateListeners happens every time we rerender, so if we've set the event listener before, we
     //    need to remove the old one and replace it with the new one (which ties to the new DOM elements)
@@ -174,7 +176,7 @@ export class Autocompleter extends Application {
   async close(options = {}): Promise<void> {
     // turn off visibility immediately so we don't have to wait for the animation
     // NOTE: the application is rendered into the parent application, even if we're in an iframe for TinyMCE
-    const wrapper = document.querySelector(`.acm-autocomplete`) as HTMLElement;
+    const wrapper = document.querySelector('.acm-autocomplete') as HTMLElement;
     if (wrapper)
       wrapper.style.display = 'none';
 
@@ -192,7 +194,7 @@ export class Autocompleter extends Application {
     return super.close(options);
   }
 
-  private _onListClick = async(event: MouseEvent): Promise<void> => {
+  private _onListClick = async (event: MouseEvent): Promise<void> => {
     if (!event?.currentTarget)
       return;
 
@@ -200,10 +202,10 @@ export class Autocompleter extends Application {
 
     // pretend we clicked in
     this._focusedMenuKey = Number.parseInt(index);
-    this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
-  }
+    await this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
+  };
 
-  private _onListMouseover = async(event: MouseEvent): Promise<void> => {
+  private _onListMouseover = async (event: MouseEvent): Promise<void> => {
     if (!event?.currentTarget)
       return;
 
@@ -212,9 +214,9 @@ export class Autocompleter extends Application {
     // pretend we clicked in
     if (this._focusedMenuKey!==index) {
       this._focusedMenuKey = index;
-      this.render();
+      await this.render();
     }
-  }
+  };
 
 
   // we render at the end, so can return for cases that don't require it to save that step
@@ -238,7 +240,7 @@ export class Autocompleter extends Application {
             break;
           }
 
-          case "Escape": {
+          case 'Escape': {
             // if we're on the first menu, then we want to insert a @ symbol
             this._insertTextAndClose('@');
             break;
@@ -246,22 +248,22 @@ export class Autocompleter extends Application {
 
           case 'Backspace': {
             // close the menu
-            this.close();
+            await this.close();
             return;
           }
 
-          case "ArrowUp": {
+          case 'ArrowUp': {
             this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
             
             break;
           }
-          case "ArrowDown": {
+          case 'ArrowDown': {
             this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
     
             break;
           }
 
-          default:
+          default: {
             // see if it's one of the valid keypresses
             const match = docTypes.find((dt)=>(dt.keypress.toLocaleLowerCase()===event.key.toLocaleLowerCase()));
 
@@ -274,8 +276,7 @@ export class Autocompleter extends Application {
               // ignore
               return;
             }
-
-            break;
+          }
         }
         break;
       }
@@ -296,7 +297,7 @@ export class Autocompleter extends Application {
 
                 // if it's 0, pop up the add item dialog
                 if (!this._focusedMenuKey) {
-                  this._createDocument(this._searchDocType);
+                  await this._createDocument(this._searchDocType);
                 } else if (this._searchDocType===ValidDocType.Journal) {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
@@ -361,17 +362,17 @@ export class Autocompleter extends Application {
               break;
             }
             
-            case "Escape": {
+            case 'Escape': {
               // just close the whole menu (without inserting @, because it's more likely we just changed our mind)
-              this.close();
+              await this.close();
               return;
             }
 
-            case "ArrowUp": {
+            case 'ArrowUp': {
               this._focusedMenuKey = (this._focusedMenuKey - 1 + this._filteredSearchResults.length+1) % (this._filteredSearchResults.length+1);
               break;
             }
-            case "ArrowDown": {
+            case 'ArrowDown': {
               this._focusedMenuKey = (this._focusedMenuKey + 1) % (this._filteredSearchResults.length+1);
               break;
             }
@@ -389,7 +390,7 @@ export class Autocompleter extends Application {
     }
 
     await this.render();
-  }
+  };
           
   private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
     const sel = this._editor.ownerDocument.getSelection();
@@ -435,14 +436,14 @@ export class Autocompleter extends Application {
     // return coord
     //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
     return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
-  }
+  };
 
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
   private _getFilteredSearchResults(): SearchResult[] {
     const FULL_TEXT_SEARCH = true; // TODO (for now, only name is searchable anyway)
     const RESULT_LENGTH = moduleSettings.get(SettingKeys.resultLength);
 
-    let retval: SearchResult[];
+    let retval = [] as SearchResult[];
 
     if (FULL_TEXT_SEARCH) { // TODO
       retval = this._lastPulledSearchResults;  // we don't know enough to filter any more (other than length of list)
@@ -484,7 +485,7 @@ export class Autocompleter extends Application {
       // select create/whole journal option
       this._focusedMenuKey = 0;
     }
-  }
+  };
 
   // pull the new data from the database
   private async _pullData(): Promise<void> {
@@ -581,7 +582,7 @@ export class Autocompleter extends Application {
   private _insertTextAndClose(text: string): void {
     this._editor.focus();  
     this._editor.ownerDocument.execCommand('insertText', false, text);
-    this.close();
+    void this.close();
   }
 
   private async _createDocument(docType: ValidDocType): Promise<void> {
@@ -603,7 +604,7 @@ export class Autocompleter extends Application {
     //if ( this.collection instanceof CompendiumCollection ) options.pack = this.collection.collection;
 
     const cls = getDocumentClass(collection.documentName);
-    cls.createDialog(data, options).then((result) => {
+    cls.createDialog(data, options).then((result: DocumentType | null) => {
       if (result) {
         // it was created
         if (range) {
@@ -616,6 +617,6 @@ export class Autocompleter extends Application {
       }
     });
 
-    this.close();
+    void this.close();
   }
 }

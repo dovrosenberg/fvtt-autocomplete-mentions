@@ -24,47 +24,46 @@ function registerKeyListeners() {
   //    iframes didn't work... I don't think the keys are bubbling up that high
   // ideally there'd be a hook or something that tells us when a new editor is opened, but the only
   //    one I can find is only called for ProseEditors
-  var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        for (let i=0; i<mutation.addedNodes.length; i++) {
-          if (mutation.addedNodes[i].nodeName==='IFRAME') {
-            // for some reason I can't figure out, this only works if there's a delay here
-            // either way, it successfully attaches - I can see the event on the document - but it never executes
-            //   unless I wrap in this delay
-            setTimeout(()=> {
-              jQuery((mutation.addedNodes[i] as any).contentDocument).on('keydown', 'body#tinymce.mce-content-body[contenteditable="true"]', { editorType: EditorType.TinyMCE }, onKeydown);
-            }, 100);
-          }
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      for (let i=0; i<mutation.addedNodes.length; i++) {
+        if (mutation.addedNodes[i].nodeName==='IFRAME') {
+          // for some reason I can't figure out, this only works if there's a delay here
+          // either way, it successfully attaches - I can see the event on the document - but it never executes
+          //   unless I wrap in this delay
+          setTimeout(()=> {
+            jQuery((mutation.addedNodes[i] as any).contentDocument).on('keydown', 'body#tinymce.mce-content-body[contenteditable="true"]', { editorType: EditorType.TinyMCE }, onKeydown);
+          }, 100);
         }
-      })
+      }
+    });
   });
   observer.observe(document, {
-      subtree: true,
-      childList: true
+    subtree: true,
+    childList: true
   });
 
 }
 
-function onKeydown(event: KeyboardEvent) {
+async function onKeydown (event: JQuery.KeyDownEvent) {
   // watch for the @
   if (event.key === '@') {
-      event.preventDefault();
+    event.preventDefault();
 
-    let editorType: EditorType;
-    editorType=event.data.editorType;
+    const editorType = event.data.editorType as EditorType;
 
-    activateAutocompleter(event.target, editorType);
+    await activateAutocompleter(event.target, editorType);
   }
 }
 
-function activateAutocompleter(targetElement, editorType) {
-  autocompleter?.close();
+async function activateAutocompleter (targetElement, editorType) {
+  await autocompleter?.close();
 
   // Otherwise, create a new autocompleter
   autocompleter = new Autocompleter(targetElement, editorType,  () => {
-      // When this Autocompleter gets closed, clean up the registration for this element.
-      autocompleter = null;
+    // When this Autocompleter gets closed, clean up the registration for this element.
+    autocompleter = null;
   });
   
-  autocompleter.render(true);
+  await autocompleter.render(true);
 }
