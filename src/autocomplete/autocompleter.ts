@@ -677,8 +677,8 @@ export class Autocompleter extends Application {
       const compMatchs = getGame().packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
       for (const compMatch of compMatchs) {
         // find any matching docs
-        const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
-        const matchdocs = (await compMatch.getDocuments({ _id__in: matchs })) as DocumentType11[];
+        const matches = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
+        const matchdocs = (await compMatch.getDocuments({ _id__in: matches })) as DocumentType11[];
         results = results.concat(matchdocs);
 
         if (results.length >= maxResultCount)
