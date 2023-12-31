@@ -42,7 +42,7 @@ export class Autocompleter extends Application {
   private _location: WindowPosition;   // location of the popup
   private _editor: HTMLElement;    // the editor element
   private _editorType: EditorType;   // the type of editor we're supporting
-  private _currentDoc: any;    // current document being edited
+  private _currentDoc: DocumentType11 | null;    // current document being edited
   private _searchingFromJournalPage = false;    // are we searching from a journal page (used to let us more quickly search within that journal)
 
   // status
@@ -63,7 +63,7 @@ export class Autocompleter extends Application {
   constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void) {
     super();
 
-    this._currentDoc = (ui as ui11).activeWindow.document;
+    this._currentDoc = (ui as ui11).activeWindow.document as DocumentType11 ?? null;
 
     log(false, 'Autocompleter construction');
 
@@ -321,7 +321,7 @@ export class Autocompleter extends Application {
 
                   // get the clicked journal
                   let journal;
-                  if (this._focusedMenuKey===1) {
+                  if (this._currentDoc && this._focusedMenuKey===1) {
                     // the current journal special command
                     journal = {
                       uuid: this._currentDoc.parent.uuid,
@@ -395,7 +395,7 @@ export class Autocompleter extends Application {
                   this._currentMode = AutocompleteMode.docSearch;
                   this._shownFilter = this._lastJournalFilter;
                   this._lastJournalFilter = '';
-                  this._searchingFromJournalPage = (this._currentDoc.documentName === 'JournalEntryPage');
+                  this._searchingFromJournalPage = (this._currentDoc?.documentName === 'JournalEntryPage');
                   await this._refreshSearch();
                 }
                 this._focusedMenuKey = 0;
@@ -558,31 +558,35 @@ export class Autocompleter extends Application {
       return;
     }
 
-    // Check how many result make the <...> appear.
-    const OVERFLOW_LENGTH = moduleSettings.get(SettingKeys.resultLength) + 1;
+    // Check how many result make the <...> appear; we want that many (if available)
+    //   because otherwise when we display the list we don't know if there were
+    //   more
+    const resultsDesired = moduleSettings.get(SettingKeys.resultLength) + 1;
     let results = [] as DocumentType11[];
 
-    const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
-    const curCompedium = curMainDoc.compendium?.collection;
+    // if we have a current doc, check for a compendium (if doc is a journal page, use the parent entry instead)
+    const curMainDoc = this._currentDoc?.parent ?? this._currentDoc;
+    const curCompendium = curMainDoc?.compendium?.collection;
 
-    // If we are editing from a compendium, search compendiums first.
-    if (curCompedium) {
-        results = await this._searchCompediums(OVERFLOW_LENGTH, docType.referenceText);
+    // If we are editing from a compendium, search compendia first
+    if (curCompendium) {
+      results = await this._searchCompendia(resultsDesired, docType.referenceText);
     }
 
     // Check in game document (not in compendium)
     const collection = getGame()[docType.collectionName] as DocumentType11;
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
+
     if (FULL_TEXT_SEARCH) {
       results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType11[]);
     } else {
       //results.concat(collection.search({query: this._shownFilter, filters: [nameFilter]}));
     }
 
-    // If we are not editing from a compendium, search compendiums last.
-    if (!curCompedium) {
-      const compediumResult = await this._searchCompediums(OVERFLOW_LENGTH - results.length, docType.referenceText);
-      results = results.concat(compediumResult);
+    // If we are not editing from a compendium, search compendia last
+    if (!curCompendium) {
+      const compendiumResult = await this._searchCompendia(resultsDesired - results.length, docType.referenceText);
+      results = results.concat(compendiumResult);
     }
 
     // remove any null names (which Foundry allows)
@@ -597,9 +601,8 @@ export class Autocompleter extends Application {
           return '';
 
         // When the result is in the same compendium explicitly show it.
-        const curMainDoc = this._currentDoc.parent ?? this._currentDoc;
-        if (curMainDoc.compendium?.collection === item.pack)
-          return ` (this compendium)`;
+        if (curCompendium === item.pack)
+          return ' (this compendium)';
         
         return ` (${item.pack})`;
       })();
@@ -652,34 +655,33 @@ export class Autocompleter extends Application {
     return;
   }
 
-  private async _searchCompediums(maxResultCount: number, documentName: string): Promise<DocumentType11[]> {
-    let results = [] as DocumentType11[];
-    
+  // maxResultCount is the max number of matches desired
+  private async _searchCompendia(maxResultCount: number, documentName: string): Promise<DocumentType11[]> {
     // No need to do anything if there is no place for any result.
     if (maxResultCount < 1)
-      return results;
+      return [];
 
     // Check in the settings what are the compendium to include.
     const includedCompendia = moduleSettings.get(SettingKeys.includedCompendia);
     if (!includedCompendia)
-      return results;
+      return [];
 
+    let results = [] as DocumentType11[];
     const query = SearchFilter.cleanQuery(this._shownFilter);
     const queryRegex = new RegExp(RegExp.escape(query), "i");
 
-    const compendiums = includedCompendia.split(',');
-    for (const compendium of compendiums) {
-      const compendiumRegEx = new RegExp(compendium);
+    const compendia = includedCompendia.split(',');
+    for (const compendium of compendia) {
+      const compendiumRegEx = new RegExp(compendium.trim());
       const compMatchs = getGame().packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
       for (const compMatch of compMatchs) {
-        //if (results.length >= OVERFLOW_LENGTH)
-
+        // find any matching docs
         const matchs = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
         const matchdocs = (await compMatch.getDocuments({ _id__in: matchs })) as DocumentType11[];
         results = results.concat(matchdocs);
 
         if (results.length >= maxResultCount)
-          break;
+          return results;
       }
     }
 
@@ -691,11 +693,12 @@ export class Autocompleter extends Application {
     this._searchDocType = docType;
     this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
     this._focusedMenuKey = 0;
-    this._searchingFromJournalPage = (docType === ValidDocType.Journal && this._currentDoc.documentName === 'JournalEntryPage');
+    this._searchingFromJournalPage = (docType === ValidDocType.Journal && this._currentDoc?.documentName === 'JournalEntryPage');
     await this._refreshSearch();
   }
 
   private _insertReferenceAndClose(uuid: string): void {
+    // convert any highlighted text into the manual label for the link
     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
     const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
     this._insertTextAndClose(`@UUID[${uuid}]${label}`);
@@ -719,7 +722,7 @@ export class Autocompleter extends Application {
     let documentName = '';
 
     const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
-    const curMainDoc = (this._currentDoc.parent ?? this._currentDoc) as DocumentType11;
+    const curMainDoc = (this._currentDoc?.parent ?? this._currentDoc) as DocumentType11;
 
     if (this._currentMode === AutocompleteMode.journalPageSearch) {
       // We are creating a new page in a journal; set the journal as parent
@@ -729,7 +732,7 @@ export class Autocompleter extends Application {
       documentName ='JournalEntryPage'; 
     } else if (curMainDoc.documentName === collection.documentName) {
       // We are creating a new entry of the same type of the document we are editing;
-      //    create it in the same pack/compedium and folder.
+      //    create it in the same pack/compendium and folder.
       pack = curMainDoc.compendium?.collection;
       folder = curMainDoc.folder?.id ?? null;
       documentName = collection.documentName;
