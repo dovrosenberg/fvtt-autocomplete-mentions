@@ -12,17 +12,19 @@ without needing to stop to drag & drop or even create a new element.
 to the newly created element into the editor.
 - Inserts references as pure UUID so that the link text updates when the name of the referenced item changes 
 
-
 ## How it works
 ### The basics
 - Typing @ in any* Foundry VTT editor will pop open a context menu where you can select the type of document.
 - Select the document type by using the up/down arrows and enter key, typing the first letter as indicated, 
-or clicking with the mouse
+or clicking with the mouse.
 - You'll then get a list of the available documents of that type.  Start typing to filter the list.  Filtering is Foundry's full-text search (which currently appears to only search the name field, but finds matches in any part of the field - not just the start.  For example, 'j', 'jo', and 'oe' would all be matches for an actor named 'Joe'). Searching is not case sensitive.
-  - If you highlight text in the editor before pressing @, that text will become the initial filter
+  - If you highlight text in the editor before pressing @, that text will become the initial filter.
 - You can select the document you want with the arrow/enter keys or clicking with the mouse.  
 - Backspace will delete characters from the search string, and when the search string is empty, it will also go back to the prior menu.  
 - The Escape key will close the menu without inserting a reference.  Pressing escape immediately on the first menu after typing '@' will insert a '@' character in the editor for scenarios where you need that character. 
+
+\* Note: Supports the new (standard) ProseMirror editor, as well as TinyMCE - send me a feature request if 
+you need a different one
 
 ### Creating new documents
 - You can use the "Create" option to quickly create a new document while simultaneously inserting a reference to it.
@@ -42,10 +44,6 @@ or clicking with the mouse
 ### Compendia
 - There is a module setting to specify a list of compendia to be searched.  
 - If the document being edited is in a compendium, then compendia will be searched first for any results.  If it is not, then compendia will be searched last (and thus any matching results will only be shown if there aren't sufficient results in the world data).
-
-\* Note: Supports the new (standard) ProseMirror editor, as well as TinyMCE - send me a feature request if 
-you need a different one
-
 
 ## Issues?
 

@@ -172,7 +172,7 @@ export class Autocompleter extends Application {
     if (this._editorType===EditorType.TinyMCE) {
       this._editor.ownerDocument.addEventListener('pointerdown', onPointerDown);
     }
-}
+  }
 
   public async render(force?: boolean) {
     const result = await super.render(force);
@@ -255,7 +255,7 @@ export class Autocompleter extends Application {
 
           case 'Backspace': {
             // close the menu
-            this._editor.focus()
+            this._editor.focus();
             await this.close();
             return;
           }
@@ -325,8 +325,8 @@ export class Autocompleter extends Application {
                   if (this._currentDoc && this._focusedMenuKey===1) {
                     // the current journal special command
                     journal = {
-                      uuid: this._currentDoc.parent.uuid,
-                      name: this._currentDoc.parent.name,
+                      uuid: this._currentDoc.parent?.uuid,
+                      name: this._currentDoc.parent?.name,
                       parentJournal: this._currentDoc.parent
                     };
                   } else {
@@ -356,7 +356,6 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    const docType = docTypes.find((dt)=>(dt.type===this._searchDocType));
                     this._insertReferenceAndClose(item.uuid);
                   }
                 }
@@ -364,7 +363,7 @@ export class Autocompleter extends Application {
                 // handle journal page select
                 // if it's 0, we are creating a new page.
                 if (!this._focusedMenuKey) {
-                  this._createDocument(this._searchDocType!);
+                  await this._createDocument(this._searchDocType);
                 }
                 // if it's 1 (and we're not searching current journal), we just add a reference to the whole journal
                 else if (this._focusedMenuKey === 1) {
@@ -751,8 +750,8 @@ export class Autocompleter extends Application {
     const selection = this._editor.ownerDocument.getSelection();
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
-    const cls = getDocumentClass(documentName);
-    cls.createDialog(data, options).then((result: DocumentType11 | null): void => {
+    const cls = getDocumentClass(documentName) as any;
+    cls.createDialog(data, options).then(async (result: DocumentType11 | null): void => {
       if (result) {
         // it was created
 
@@ -764,8 +763,8 @@ export class Autocompleter extends Application {
         if (this._shownFilter.length > 0) {
           const label = getGame().i18n.localize(cls.metadata.label);
           const docDefaultName = getGame().i18n.format('DOCUMENT.New', { type: label });
-          if (result.name.startsWith(docDefaultName)) {
-            result.update({ name: this._shownFilter });
+          if (result.name?.startsWith(docDefaultName)) {
+            await result.update({ name: this._shownFilter });
           }
         }
         if (range) {
