@@ -4,8 +4,8 @@
   "description": "@mention actors, items, scenes, etc. from any editor box (without having to drag & drop or remember names)",
 
   "compatibility": {
-    "minimum": "11",
-    "verified": "11.315"
+    "minimum": "13",
+    "verified": "13.340"
   },
 
   "esmodules": [
@@ -33,10 +33,10 @@
     }
   ],
 
+  "version": "#{VERSION}#",
   "url": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions",
   "manifest": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/releases/latest/download/module.json",
   "download": "#{DOWNLOAD}#",
-  "## version": "will be added when we build",
 
   "license": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/LICENSE.md",
   "readme": "https://github.com/dovrosenberg/fvtt-autocomplete-mentions/blob/master/README.md",
