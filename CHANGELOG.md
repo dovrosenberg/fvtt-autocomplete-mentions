@@ -1,5 +1,11 @@
 # Change Log
 
+## v2.0.0 - Foundry VTT v13 compatibility
+![](https://img.shields.io/badge/release%20date-April%2017%2C%202025-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.0.0/module.zip)
+
+Updated compatibility to support Foundry v13.  
+
 ## v1.1.1 - Update version support to 12.331
 ![](https://img.shields.io/badge/release%20date-August%2017%2C%202024-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.1.1/module.zip)
