@@ -6,6 +6,12 @@
 
 Updated compatibility to support Foundry v13.  
 
+## v1.1.1 - Update version support to 12.331
+![](https://img.shields.io/badge/release%20date-August%2017%2C%202024-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.1.1/module.zip)
+
+- Update version support to 12.331
+
 ## v1.1.0 - Lots of new features!
 ![](https://img.shields.io/badge/release%20date-December%2031%2C%202023-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v1.1.0/module.zip)
