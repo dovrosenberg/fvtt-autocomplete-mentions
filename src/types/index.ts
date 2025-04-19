@@ -22,6 +22,14 @@ export enum ValidDocType {
   Journal,
   RollTable,
   Scene,
+
+  // campaign builder
+  Character,
+  Location,
+  Organization,
+  World,
+  Campaign,
+  Session,
 }
 
 export enum EditorType {

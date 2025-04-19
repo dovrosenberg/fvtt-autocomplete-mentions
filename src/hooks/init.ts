@@ -59,11 +59,14 @@ async function onKeydown (event: JQuery.KeyDownEvent) {
 async function activateAutocompleter (targetElement, editorType) {
   await autocompleter?.close();
 
-  // Otherwise, create a new autocompleter
-  autocompleter = new Autocompleter(targetElement, editorType,  () => {
+  // Check if the editor is inside a div with .fcb-editor class
+  const isCampaignBuilderEditor = targetElement.closest && targetElement.closest('.fcb-editor') != null;
+  
+  // Create a new autocompleter
+  autocompleter = new Autocompleter(targetElement, editorType, () => {
     // When this Autocompleter gets closed, clean up the registration for this element.
     autocompleter = null;
-  });
+  }, isCampaignBuilderEditor);
   
   await autocompleter.render(true);
 }
