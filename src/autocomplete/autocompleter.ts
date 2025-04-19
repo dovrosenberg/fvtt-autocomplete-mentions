@@ -768,6 +768,8 @@ export class Autocompleter extends Application {
           return;  
       }
 
+      results = results.filter((i)=>(i.name.toLowerCase().startsWith(this._shownFilter.toLowerCase())));
+
       this._lastPulledRowCount = results.length;
       this._lastPulledSearchResults = results;
       return;
