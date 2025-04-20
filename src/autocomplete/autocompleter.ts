@@ -849,6 +849,11 @@ export class Autocompleter extends Application {
 
   /** Create a new document of the given type.  Creates entries, etc. when in FCB or regular editor. */
   private async _createFCBDocument(docTypeInfo: DocType): Promise<void> {
+    // register the hook to catch after the document is made
+    // we need to save the current editor selection because it goes away when the new boxes pop up
+    const selection = this._editor.ownerDocument.getSelection();
+    const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
+
     // in theory campaign-builder must be installed since we got here because we're in an fcb div... but 
     //    maybe some other module is conflicting
     try {
@@ -879,6 +884,10 @@ export class Autocompleter extends Application {
       }
 
       if (newItem) {
+        if (range) {
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
         this._insertReferenceAndClose(newItem.uuid, newItem.name);
       }
 
