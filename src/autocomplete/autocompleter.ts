@@ -383,7 +383,7 @@ export class Autocompleter extends Application {
 
                 // if it's 0, pop up the add item dialog
                 if (this._focusedMenuKey===0) {
-                  if (this._isCampaignBuilder) {
+                  if (this.currentSearchDocType?.isFCB) {
                     await this._createFCBDocument(this._searchDocType);
                   } else {
                     await this._createDocument(this._searchDocType);
@@ -850,16 +850,16 @@ export class Autocompleter extends Application {
   }
 
   private async _createDocument(docType: ValidDocType): Promise<void> {
-    if (this._isCampaignBuilder) {
-      await this._createFCBDocument(docType);
-      return;
-    }
-
     const docTypeInfo = this.currentDocTypes.find((dt) => dt.type === docType);
-      
+
     if (!docTypeInfo)
       return;
 
+    if (docTypeInfo.isFCB) {
+      await this._createFCBDocument(docType);
+      return;
+    }
+    
     let pack = null as string | null;
     let folder = null as string | null;
     let parent = null as JournalEntry11 | null;
@@ -868,6 +868,8 @@ export class Autocompleter extends Application {
 
     const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
     const curMainDoc = (this._currentDoc?.parent ?? this._currentDoc) as DocumentType11;
+
+    TODO: if we're in campaign mode we don't have a current document, so need to do something else
 
     if (this._currentMode === AutocompleteMode.journalPageSearch) {
       // We are creating a new page in a journal; set the journal as parent
