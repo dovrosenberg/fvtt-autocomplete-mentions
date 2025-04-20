@@ -2,14 +2,16 @@ import moduleJson from '@module';
 import { log } from '@/utils/log';
 import { getGame, localize } from '@/utils/game';
 import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11, JournalEntry11 } from '@/types';
-import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
+import { ModuleSettings, SettingKeys } from '@/settings/ModuleSettings';
 
+// isFCB is whether it's normal foundry or FCB
 // keypress and title show in the menu to pick a type
 // type is the internal doctype
 // searchName shows in the search screen ("Searching ___ for: ")
 // collectionName is the foundry collection (blank for FCB ones)
 // referenceText is the text inserted into the editor @___[name]
 type DocType = { 
+  isFCB: boolean;
   type: ValidDocType, 
   keypress: string, 
   title: string, 
@@ -39,22 +41,22 @@ export function initializeLocalizedText(): void {
   log(false, 'Loading localized document text');
 
   docTypes = [
-    { type: ValidDocType.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
-    { type: ValidDocType.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
-    { type: ValidDocType.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
-    { type: ValidDocType.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
-    { type: ValidDocType.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
+    { isFCB: false, type: ValidDocType.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
+    { isFCB: false, type: ValidDocType.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
+    { isFCB: false, type: ValidDocType.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
+    { isFCB: false, type: ValidDocType.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
+    { isFCB: false, type: ValidDocType.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
   ].sort((a,b)=>(a.title.localeCompare(b.title)));  
   
   // Initialize campaign builder document types
   // These are specific to the campaign builder mode
   campaignBuilderDocTypes = [
-    { type: ValidDocType.Character, keypress: localize('acm.documents.keys.characters'), title: localize('acm.documents.titles.characters'), searchName: 'Characters', collectionName: '', referenceText: 'Chracter', },
-    { type: ValidDocType.Location, keypress: localize('acm.documents.keys.locations'), title: localize('acm.documents.titles.locations'), searchName: 'Locations', collectionName: '', referenceText: 'Location', },
-    { type: ValidDocType.Organization, keypress: localize('acm.documents.keys.organizations'), title: localize('acm.documents.titles.organizations'), searchName: 'Organizations', collectionName: '', referenceText: 'Organization', },
-    { type: ValidDocType.World, keypress: localize('acm.documents.keys.worlds'), title: localize('acm.documents.titles.worlds'), searchName: 'Worlds', collectionName: '', referenceText: 'World', },
-    { type: ValidDocType.Campaign, keypress: localize('acm.documents.keys.campaigns'), title: localize('acm.documents.titles.campaigns'), searchName: 'Campaigns', collectionName: '', referenceText: 'Campaign', },
-    { type: ValidDocType.Session, keypress: localize('acm.documents.keys.sessions'), title: localize('acm.documents.titles.sessions'), searchName: 'Sessions', collectionName: '', referenceText: 'Session', },
+    { isFCB: true, type: ValidDocType.Character, keypress: localize('acm.documents.keys.characters'), title: localize('acm.documents.titles.characters'), searchName: 'Characters', collectionName: '', referenceText: 'Chracter', },
+    { isFCB: true, type: ValidDocType.Location, keypress: localize('acm.documents.keys.locations'), title: localize('acm.documents.titles.locations'), searchName: 'Locations', collectionName: '', referenceText: 'Location', },
+    { isFCB: true, type: ValidDocType.Organization, keypress: localize('acm.documents.keys.organizations'), title: localize('acm.documents.titles.organizations'), searchName: 'Organizations', collectionName: '', referenceText: 'Organization', },
+    { isFCB: true, type: ValidDocType.World, keypress: localize('acm.documents.keys.worlds'), title: localize('acm.documents.titles.worlds'), searchName: 'Worlds', collectionName: '', referenceText: 'World', },
+    { isFCB: true, type: ValidDocType.Campaign, keypress: localize('acm.documents.keys.campaigns'), title: localize('acm.documents.titles.campaigns'), searchName: 'Campaigns', collectionName: '', referenceText: 'Campaign', },
+    { isFCB: true, type: ValidDocType.Session, keypress: localize('acm.documents.keys.sessions'), title: localize('acm.documents.titles.sessions'), searchName: 'Sessions', collectionName: '', referenceText: 'Session', },
   ].sort((a,b)=>(a.title.localeCompare(b.title)));  
 }
 
@@ -116,8 +118,6 @@ export class Autocompleter extends Application {
 
     this._currentDoc = (ui as ui11).activeWindow.document as DocumentType11 ?? null;
 
-    log(false, 'Autocompleter construction');
-
     this._editor = target;
     this._editorType = editorType;
     this._isCampaignBuilder = isCampaignBuilder;
@@ -164,7 +164,7 @@ export class Autocompleter extends Application {
       searchingFromJournalPage: this._searchingFromJournalPage,
       firstSearchIdx: this._initialSearchOffset(),
       journalName: this._selectedJournal?.name,
-      docType: currentDocTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
+      docType: this.currentSearchDocType?.searchName,
       highlightedEntry: this._focusedMenuKey,
       searchResults: this._filteredSearchResults,
       shownFilter: this._shownFilter,
@@ -233,6 +233,11 @@ export class Autocompleter extends Application {
   /** get the right set */
   public get currentDocTypes(): DocType[] {
     return this._isCampaignBuilder ? docTypes.concat(campaignBuilderDocTypes) : docTypes;
+  }
+
+  /** get the right set */
+  public get currentSearchDocType(): DocType | null {
+    return this._searchDocType!=null ? this.currentDocTypes.find((dt)=>(dt.type===this._searchDocType)) || null : null;
   }
 
   public async render(force?: boolean) {
@@ -378,7 +383,11 @@ export class Autocompleter extends Application {
 
                 // if it's 0, pop up the add item dialog
                 if (this._focusedMenuKey===0) {
-                  await this._createDocument(this._searchDocType);
+                  if (this._isCampaignBuilder) {
+                    await this._createFCBDocument(this._searchDocType);
+                  } else {
+                    await this._createDocument(this._searchDocType);
+                  }
                 } else if (this._searchDocType===ValidDocType.Journal) {
                   // for journal, we have to go into journal mode
                   this._currentMode = AutocompleteMode.journalPageSearch;
@@ -419,14 +428,19 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    this._insertReferenceAndClose(item.uuid);
+                    // FCB items need names, the others we want to leave blank
+                    if (this.currentSearchDocType?.isFCB) {
+                      this._insertReferenceAndClose(item.uuid, item.name);
+                    } else {
+                      this._insertReferenceAndClose(item.uuid);
+                    }
                   }
                 }
               } else {
                 // handle journal page select
                 // if it's 0, we are creating a new page.
                 if (!this._focusedMenuKey) {
-                  await this._createDocument(this._searchDocType);
+                  await this._createDocument(this._searchDocType as ValidDocType);
                 }
                 // if it's 1 (and we're not searching current journal), we just add a reference to the whole journal
                 else if (this._focusedMenuKey === 1) {
@@ -440,8 +454,10 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    const docType = currentDocTypes.find((dt)=>(dt.type===this._searchDocType));
-                    this._insertReferenceAndClose(item.uuid);
+                    if (this.currentSearchDocType.isFCB)
+                      this._insertReferenceAndClose(item.uuid, item.name);
+                    else
+                      this._insertReferenceAndClose(item.uuid);
                   }
                 }
               }
@@ -536,15 +552,6 @@ export class Autocompleter extends Application {
 
     let adjustmentRect = { left: 0, top: 0 };
 
-    // if it's TinyMCE, we have to adjust for the location of the iframe it's in
-    if (this._editorType===EditorType.TinyMCE) {
-      const iframe = this._editor.ownerDocument.defaultView.frameElement;
-      if (!iframe)
-        throw 'Error locating TinyMCE - is it not in an iframe???';
-
-      adjustmentRect = iframe.getBoundingClientRect();      
-    }
-
     // return coord
     //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
     return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
@@ -553,7 +560,7 @@ export class Autocompleter extends Application {
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
   private _getFilteredSearchResults(): SearchResult[] {
     const FULL_TEXT_SEARCH = true; // TODO (for now, only name is searchable anyway)
-    const RESULT_LENGTH = moduleSettings.get(SettingKeys.resultLength);
+    const RESULT_LENGTH = ModuleSettings.get(SettingKeys.resultLength);
 
     let retval = [] as SearchResult[];
 
@@ -586,7 +593,7 @@ export class Autocompleter extends Application {
 
       if (this._currentMode===AutocompleteMode.journalPageSearch)
         await this._pullJournalData();
-      else if (this._isCampaignBuilder)
+      else if (this.currentSearchDocType?.isFCB)
         await this._pullFCBData();
       else
         await this._pullData();
@@ -616,8 +623,7 @@ export class Autocompleter extends Application {
     this._lastPulledFilter = this._shownFilter;
     this._lastPulledType = this._searchDocType;
 
-    const docType = this.currentDocTypes.find((d)=>(d.type===this._searchDocType));
-    if (!docType?.collectionName) {
+    if (!this.currentSearchDocType?.collectionName) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
       this._lastPulledSearchResults = [];
@@ -627,7 +633,7 @@ export class Autocompleter extends Application {
     // Check how many result make the <...> appear; we want that many (if available)
     //   because otherwise when we display the list we don't know if there were
     //   more
-    const resultsDesired = moduleSettings.get(SettingKeys.resultLength) + 1;
+    const resultsDesired = ModuleSettings.get(SettingKeys.resultLength) + 1;
     let results = [] as DocumentType11[];
 
     // if we have a current doc, check for a compendium (if doc is a journal page, use the parent entry instead)
@@ -636,11 +642,11 @@ export class Autocompleter extends Application {
 
     // If we are editing from a compendium, search compendia first
     if (curCompendium) {
-      results = await this._searchCompendia(resultsDesired, docType.referenceText);
+      results = await this._searchCompendia(resultsDesired, this.currentSearchDocType.referenceText);
     }
 
     // Check in game document (not in compendium)
-    const collection = getGame()[docType.collectionName] as DocumentType11;
+    const collection = getGame()[this.currentSearchDocType.collectionName] as DocumentType11;
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
 
     if (FULL_TEXT_SEARCH) {
@@ -651,7 +657,7 @@ export class Autocompleter extends Application {
 
     // If we are not editing from a compendium, search compendia last
     if (!curCompendium) {
-      const compendiumResult = await this._searchCompendia(resultsDesired - results.length, docType.referenceText);
+      const compendiumResult = await this._searchCompendia(resultsDesired - results.length, this.currentSearchDocType.referenceText);
       results = results.concat(compendiumResult);
     }
 
@@ -743,13 +749,13 @@ export class Autocompleter extends Application {
 
       switch (this._searchDocType) {
         case ValidDocType.Character:
-          results = await api.getCharacters();
+          results = await api.getEntries(api.TOPICS.Character);
           break;
         case ValidDocType.Location:
-          results = await api.getLocations();
+          results = await api.getEntries(api.TOPICS.Location);
           break;
         case ValidDocType.Organization:
-          results = await api.getOrganization();
+          results = await api.getEntries(api.TOPICS.Organization);
           break;
         case ValidDocType.World:
           results = await api.getWorld();
@@ -785,7 +791,7 @@ export class Autocompleter extends Application {
       return [];
 
     // Check in the settings what are the compendium to include.
-    const includedCompendia = moduleSettings.get(SettingKeys.includedCompendia);
+    const includedCompendia = ModuleSettings.get(SettingKeys.includedCompendia);
     if (!includedCompendia)
       return [];
 
@@ -820,12 +826,16 @@ export class Autocompleter extends Application {
     
     await this._refreshSearch();
   }
-
-  private _insertReferenceAndClose(uuid: string): void {
+  private _insertReferenceAndClose(uuid: string, name?: string): void {
     // convert any highlighted text into the manual label for the link
     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
-    const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
-    this._insertTextAndClose(`@UUID[${uuid}]${label}`);
+
+    if (name)
+      this._insertTextAndClose(`@UUID[${uuid}]{${name}}`);
+    else {
+      const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
+      this._insertTextAndClose(`@UUID[${uuid}]${label}`);
+    }
   }
 
   private _insertTextAndClose(text: string): void {
