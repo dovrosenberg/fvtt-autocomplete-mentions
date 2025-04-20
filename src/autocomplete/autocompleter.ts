@@ -1,8 +1,30 @@
 import moduleJson from '@module';
 import { log } from '@/utils/log';
-import { getGame, localize } from '@/utils/game';
-import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, ui11, DocumentType11, JournalEntry11 } from '@/types';
-import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
+import { localize } from '@/utils/game';
+import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, DocumentType, } from '@/types';
+import { ModuleSettings, SettingKeys } from '@/settings/ModuleSettings';
+
+// isFCB is whether it's normal foundry or FCB
+// keypress and title show in the menu to pick a type
+// type is the internal doctype
+// searchName shows in the search screen ("Searching ___ for: ")
+// collectionName is the foundry collection (blank for FCB ones)
+// referenceText is the text inserted into the editor @___[name]
+type DocType = { 
+  isFCB: boolean;
+  type: ValidDocType, 
+  keypress: string, 
+  title: string, 
+  searchName: string, 
+  collectionName: string, 
+  referenceText: string, 
+  canCreate: boolean,
+}
+
+let docTypes = [] as DocType[];
+
+// Campaign builder specific document types
+let campaignBuilderDocTypes = [] as DocType[];
 
   /* so here's the flow...
       press @
@@ -15,61 +37,93 @@ import { moduleSettings, SettingKeys } from '@/settings/ModuleSettings';
           then filter like the document choices)
   */
 
-
-// keypress and title show in the menu to pick a type
-// type is the internal doctype
-// searchName shows in the search screen ("Searching ___ for: ")
-// collectionName is the foundry collection
-// referenceText is the text inserted into the editor @___[name]
-let docTypes = [] as { type: ValidDocType, keypress: string, title: string, searchName: string, collectionName: string, referenceText: string, }[];
-
 // load i18n strings after the game has loaded
 export function initializeLocalizedText(): void {
   log(false, 'Loading localized document text');
 
   docTypes = [
-    { type: ValidDocType.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', },
-    { type: ValidDocType.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', },
-    { type: ValidDocType.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', },
-    { type: ValidDocType.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', },
-    { type: ValidDocType.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', },
-  ];
+    { isFCB: false, type: ValidDocType.Actor, keypress: localize('acm.documents.keys.actors'), title: localize('acm.documents.titles.actors'), searchName: 'Actors', collectionName: 'actors', referenceText: 'Actor', canCreate: true, },
+    { isFCB: false, type: ValidDocType.Item, keypress: localize('acm.documents.keys.items'), title: localize('acm.documents.titles.items'), searchName: 'Items', collectionName: 'items', referenceText: 'Item', canCreate: true, },
+    { isFCB: false, type: ValidDocType.Journal, keypress: localize('acm.documents.keys.journals'), title: localize('acm.documents.titles.journals'), searchName: 'Journals', collectionName: 'journal', referenceText: 'JournalEntry', canCreate: true, },
+    { isFCB: false, type: ValidDocType.RollTable, keypress: localize('acm.documents.keys.rollTables'), title: localize('acm.documents.titles.rollTables'), searchName: 'Roll Tables', collectionName: 'tables', referenceText: 'RollTable', canCreate: true, },
+    { isFCB: false, type: ValidDocType.Scene, keypress: localize('acm.documents.keys.scenes'), title: localize('acm.documents.titles.scenes'), searchName: 'Scenes', collectionName: 'scenes', referenceText: 'Scene', canCreate: true, },
+  ].sort((a,b)=>(a.title.localeCompare(b.title)));  
+  
+  // Initialize campaign builder document types
+  // These are specific to the campaign builder mode
+  campaignBuilderDocTypes = [
+    { isFCB: true, type: ValidDocType.Character, keypress: localize('acm.documents.keys.characters'), title: localize('acm.documents.titles.characters'), searchName: 'Characters', collectionName: '', referenceText: 'Character', canCreate: true, },
+    { isFCB: true, type: ValidDocType.Location, keypress: localize('acm.documents.keys.locations'), title: localize('acm.documents.titles.locations'), searchName: 'Locations', collectionName: '', referenceText: 'Location', canCreate: true, },
+    { isFCB: true, type: ValidDocType.Organization, keypress: localize('acm.documents.keys.organizations'), title: localize('acm.documents.titles.organizations'), searchName: 'Organizations', collectionName: '', referenceText: 'Organization', canCreate: true, },
+    { isFCB: true, type: ValidDocType.World, keypress: localize('acm.documents.keys.worlds'), title: localize('acm.documents.titles.worlds'), searchName: 'Worlds', collectionName: '', referenceText: 'World', canCreate: false, },
+    { isFCB: true, type: ValidDocType.Campaign, keypress: localize('acm.documents.keys.campaigns'), title: localize('acm.documents.titles.campaigns'), searchName: 'Campaigns', collectionName: '', referenceText: 'Campaign', canCreate: true, },
+    { isFCB: true, type: ValidDocType.Session, keypress: localize('acm.documents.keys.sessions'), title: localize('acm.documents.titles.sessions'), searchName: 'Sessions', collectionName: '', referenceText: 'Session', canCreate: false, },
+  ].sort((a,b)=>(a.title.localeCompare(b.title)));  
 }
 
 export class Autocompleter extends Application {
   private _onClose: ()=>void;      // function to call when we close
   private _onPointerDown: (event: MouseEvent)=>void;      // this is the listener on document; need to remove it when we close
   private _location: WindowPosition;   // location of the popup
-  private _editor: HTMLElement;    // the editor element
-  private _editorType: EditorType;   // the type of editor we're supporting
-  private _currentDoc: DocumentType11 | null;    // current document being edited
-  private _searchingFromJournalPage = false;    // are we searching from a journal page (used to let us more quickly search within that journal)
+  /** the editor element */
+  private _editor: HTMLElement;    
 
+  /** the type of editor we're supporting */
+  private _editorType: EditorType;   
+
+  /** the current document being edited */
+  private _currentDoc: DocumentType | null;
+
+  /** are we searching from a journal page (used to let us more quickly search within that journal) */
+  private _searchingFromJournalPage = false;
+
+  /** whether we're in campaign builder mode */
+  private _isCampaignBuilder = false;
+
+  /////////////////////////////
   // status
   private _currentMode: AutocompleteMode;
   private _focusedMenuKey = 0 as number;
-  private _searchDocType = null as ValidDocType | null;   // if we're in doc search mode, the key of the docType to search
-  private _selectedJournal: SearchResult;   // name of the selected journal when we're looking for pages
-  private _shownFilter = '' as string;    // current filter for doc search
-  private _lastJournalFilter = '';     // the filter on the journal search (so when we go back there from page search we can save it)
 
+  /** if we're in doc search mode, the key of the docType to search */
+  private _searchDocType = null as ValidDocType | null;   
+
+  /** name of the selected journal when we're looking for pages */
+  private _selectedJournal: SearchResult;   
+
+  /** current filter for doc search */
+  private _shownFilter = '' as string; 
+
+  /** the filter on the journal search (so when we go back there from page search we can save it) */
+  private _lastJournalFilter = '';    
+
+  /////////////////////////////
   // search results
-  private _lastPulledSearchResults = [] as SearchResult[];  // all of the results we got back last time
-  private _lastPulledFilter = '' as string;      // the filter we last searched the database for
-  private _lastPulledType = null as ValidDocType | null;     // the key of the doctype we last searched the database for
-  private _lastPulledRowCount = 0 as number;   // the number of rows the last query returned
-  private _filteredSearchResults = [] as SearchResult[];   // the currently shown search results
+  /** all of the results we got back last time */
+  private _lastPulledSearchResults = [] as SearchResult[];  
 
-  constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void) {
+  /** the filter we last searched the database for */
+  private _lastPulledFilter = '' as string;      
+
+  /** the key of the doctype we last searched the database for */
+  private _lastPulledType = null as ValidDocType | null;     
+
+  /** the number of rows the last query returned */
+  private _lastPulledRowCount = 0 as number;   
+
+  /** the currently shown search results */
+  private _filteredSearchResults = [] as SearchResult[];   
+
+  constructor(target: HTMLElement, editorType: EditorType, onClose: ()=>void, isCampaignBuilder = false) {
     super();
 
-    this._currentDoc = (ui as ui11).activeWindow.document as DocumentType11 ?? null;
-
-    log(false, 'Autocompleter construction');
+    this._currentDoc = ui.activeWindow.document as DocumentType ?? null;
 
     this._editor = target;
     this._editorType = editorType;
+    this._isCampaignBuilder = isCampaignBuilder;
     this._currentMode = AutocompleteMode.singleAtWaiting;
+    
     this._onClose = onClose;
 
     this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
@@ -99,21 +153,25 @@ export class Autocompleter extends Application {
 
   // this provides fields that will be available in the template; called by parent class
   public async getData(): Promise<any> {
+    const currentDocTypes = this.currentDocTypes;
+
     const data = {
       ...(await super.getData()),
       location: this._location,
-      docTypes: docTypes,
+      docTypes: currentDocTypes,
       singleAtWaiting: this._currentMode===AutocompleteMode.singleAtWaiting,
       docSearch: this._currentMode===AutocompleteMode.docSearch,
       journalPageSearch: this._currentMode===AutocompleteMode.journalPageSearch,
       searchingFromJournalPage: this._searchingFromJournalPage,
       firstSearchIdx: this._initialSearchOffset(),
       journalName: this._selectedJournal?.name,
-      docType: docTypes.find((dt)=>(dt.type===this._searchDocType))?.searchName,
+      docType: this.currentSearchDocType?.searchName,
       highlightedEntry: this._focusedMenuKey,
       searchResults: this._filteredSearchResults,
       shownFilter: this._shownFilter,
       hasMore: (this._lastPulledRowCount || 0) > (this._filteredSearchResults?.length || 0),
+      isCampaignBuilder: this._isCampaignBuilder,
+      noCreate: !this._currentSearchDocType?.canCreate,
     };
     //log(false, data);
 
@@ -174,6 +232,16 @@ export class Autocompleter extends Application {
     }
   }
 
+  /** get the right set */
+  public get currentDocTypes(): DocType[] {
+    return this._isCampaignBuilder ? docTypes.concat(campaignBuilderDocTypes) : docTypes;
+  }
+
+  /** get the right set */
+  public get currentSearchDocType(): DocType | null {
+    return this._searchDocType!=null ? this.currentDocTypes.find((dt)=>(dt.type===this._searchDocType)) || null : null;
+  }
+
   public async render(force?: boolean) {
     const result = await super.render(force);
     
@@ -231,15 +299,17 @@ export class Autocompleter extends Application {
     event.preventDefault();
     event.stopPropagation();
 
-    // for various other keys, it depends on the model
+    const currentDocTypes = this.currentDocTypes;
+
+    // for various other keys, it depends on the mode
     switch (this._currentMode) {
       case AutocompleteMode.singleAtWaiting: {
         switch (event.key) {
           case 'Enter': {
             // select the item
-            if (!docTypes[this._focusedMenuKey]) return;
+            if (!currentDocTypes[this._focusedMenuKey]) return;
 
-            const dt = docTypes[this._focusedMenuKey].type;
+            const dt = currentDocTypes[this._focusedMenuKey].type;
 
             // move to the next menu
             await this._moveToDocSearch(dt);
@@ -261,19 +331,19 @@ export class Autocompleter extends Application {
           }
 
           case 'ArrowUp': {
-            this._focusedMenuKey = (this._focusedMenuKey - 1 + docTypes.length) % docTypes.length;
+            this._focusedMenuKey = (this._focusedMenuKey - 1 + currentDocTypes.length) % currentDocTypes.length;
             
             break;
           }
           case 'ArrowDown': {
-            this._focusedMenuKey = (this._focusedMenuKey + 1) % docTypes.length;
+            this._focusedMenuKey = (this._focusedMenuKey + 1) % currentDocTypes.length;
     
             break;
           }
 
           default: {
             // see if it's one of the valid keypresses
-            const match = docTypes.find((dt)=>(dt.keypress.toLocaleLowerCase()===event.key.toLocaleLowerCase()));
+            const match = currentDocTypes.find((dt)=>(dt.keypress.toLocaleLowerCase()===event.key.toLocaleLowerCase()));
 
             if (match) {
               // finalize search mode and select the item type
@@ -356,14 +426,19 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    this._insertReferenceAndClose(item.uuid);
+                    // FCB items need names, the others we want to leave blank
+                    if (this.currentSearchDocType?.isFCB) {
+                      this._insertReferenceAndClose(item.uuid, item.name);
+                    } else {
+                      this._insertReferenceAndClose(item.uuid);
+                    }
                   }
                 }
               } else {
                 // handle journal page select
                 // if it's 0, we are creating a new page.
                 if (!this._focusedMenuKey) {
-                  await this._createDocument(this._searchDocType);
+                  await this._createDocument(this._searchDocType as ValidDocType);
                 }
                 // if it's 1 (and we're not searching current journal), we just add a reference to the whole journal
                 else if (this._focusedMenuKey === 1) {
@@ -377,8 +452,10 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    const docType = docTypes.find((dt)=>(dt.type===this._searchDocType));
-                    this._insertReferenceAndClose(item.uuid);
+                    if (this.currentSearchDocType.isFCB)
+                      this._insertReferenceAndClose(item.uuid, item.name);
+                    else
+                      this._insertReferenceAndClose(item.uuid);
                   }
                 }
               }
@@ -473,15 +550,6 @@ export class Autocompleter extends Application {
 
     let adjustmentRect = { left: 0, top: 0 };
 
-    // if it's TinyMCE, we have to adjust for the location of the iframe it's in
-    if (this._editorType===EditorType.TinyMCE) {
-      const iframe = this._editor.ownerDocument.defaultView.frameElement;
-      if (!iframe)
-        throw 'Error locating TinyMCE - is it not in an iframe???';
-
-      adjustmentRect = iframe.getBoundingClientRect();      
-    }
-
     // return coord
     //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
     return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
@@ -490,7 +558,7 @@ export class Autocompleter extends Application {
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
   private _getFilteredSearchResults(): SearchResult[] {
     const FULL_TEXT_SEARCH = true; // TODO (for now, only name is searchable anyway)
-    const RESULT_LENGTH = moduleSettings.get(SettingKeys.resultLength);
+    const RESULT_LENGTH = ModuleSettings.get(SettingKeys.resultLength);
 
     let retval = [] as SearchResult[];
 
@@ -523,7 +591,7 @@ export class Autocompleter extends Application {
 
       if (this._currentMode===AutocompleteMode.journalPageSearch)
         await this._pullJournalData();
-      else  
+      else
         await this._pullData();
     }
 
@@ -538,8 +606,15 @@ export class Autocompleter extends Application {
     }
   };
 
-  // pull the new data from the database
   private async _pullData(): Promise<void> {
+    if (this.currentSearchDocType?.isFCB)
+      await this._pullFCBData();
+    else
+      await this._pullFoundryData();
+  }
+
+  // pull the new data from the database
+  private async _pullFoundryData(): Promise<void> {
     if (this._searchDocType === null) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
@@ -551,8 +626,7 @@ export class Autocompleter extends Application {
     this._lastPulledFilter = this._shownFilter;
     this._lastPulledType = this._searchDocType;
 
-    const docType = docTypes.find((d)=>(d.type===this._searchDocType));
-    if (!docType?.collectionName) {
+    if (!this.currentSearchDocType?.collectionName) {
       this._lastPulledFilter = '';
       this._lastPulledType = null;
       this._lastPulledSearchResults = [];
@@ -562,8 +636,8 @@ export class Autocompleter extends Application {
     // Check how many result make the <...> appear; we want that many (if available)
     //   because otherwise when we display the list we don't know if there were
     //   more
-    const resultsDesired = moduleSettings.get(SettingKeys.resultLength) + 1;
-    let results = [] as DocumentType11[];
+    const resultsDesired = ModuleSettings.get(SettingKeys.resultLength) + 1;
+    let results = [] as DocumentType[];
 
     // if we have a current doc, check for a compendium (if doc is a journal page, use the parent entry instead)
     const curMainDoc = this._currentDoc?.parent ?? this._currentDoc;
@@ -571,22 +645,22 @@ export class Autocompleter extends Application {
 
     // If we are editing from a compendium, search compendia first
     if (curCompendium) {
-      results = await this._searchCompendia(resultsDesired, docType.referenceText);
+      results = await this._searchCompendia(resultsDesired, this.currentSearchDocType.referenceText);
     }
 
     // Check in game document (not in compendium)
-    const collection = getGame()[docType.collectionName] as DocumentType11;
+    const collection = game[this.currentSearchDocType.collectionName] as DocumentType;
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; at the moment, only name seems to be searchable
 
     if (FULL_TEXT_SEARCH) {
-      results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType11[]);
+      results = results.concat(collection.search({query: this._shownFilter, filters:[]}) as DocumentType[]);
     } else {
       //results.concat(collection.search({query: this._shownFilter, filters: [nameFilter]}));
     }
 
     // If we are not editing from a compendium, search compendia last
     if (!curCompendium) {
-      const compendiumResult = await this._searchCompendia(resultsDesired - results.length, docType.referenceText);
+      const compendiumResult = await this._searchCompendia(resultsDesired - results.length, this.currentSearchDocType.referenceText);
       results = results.concat(compendiumResult);
     }
 
@@ -637,10 +711,10 @@ export class Autocompleter extends Application {
     if (!collection)
       return;
 
-    let results: DocumentType11[];
+    let results: DocumentType[];
     const FULL_TEXT_SEARCH = true;   // TODO: pull from settings; for now it doesn't seem to matter
     if (FULL_TEXT_SEARCH) {
-      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType11[];
+      results = collection.search({query: this._shownFilter, filters:[]}) as DocumentType[];
     } else {
       results=[];
       //results = collection.search({query: this._shownFilter, filters: [nameFilter]});
@@ -656,29 +730,86 @@ export class Autocompleter extends Application {
     return;
   }
 
+  // pull the new data from the FCB API
+  private async _pullFCBData(): Promise<void> {
+    if (this._searchDocType === null) {
+      this._lastPulledFilter = '';
+      this._lastPulledType = null;
+      this._lastPulledSearchResults = [];
+      this._lastPulledRowCount = 0;
+      return;
+    }
+
+    this._lastPulledFilter = this._shownFilter;
+    this._lastPulledType = this._searchDocType;
+
+    let results = [] as SearchResult[];
+
+    // in theory campaign-builder must be installed since we got here because we're in an fcb div... but 
+    //    maybe some other module is conflicting
+    try {
+      const api = game.modules.get('campaign-builder').api;
+
+      switch (this._searchDocType) {
+        case ValidDocType.Character:
+          results = await api.getEntries(api.TOPICS.Character);
+          break;
+        case ValidDocType.Location:
+          results = await api.getEntries(api.TOPICS.Location);
+          break;
+        case ValidDocType.Organization:
+          results = await api.getEntries(api.TOPICS.Organization);
+          break;
+        case ValidDocType.World:
+          results = await api.getWorld();
+          break;
+        case ValidDocType.Campaign:
+          results = await api.getCampaigns();
+          break;
+        case ValidDocType.Session:
+          results = await api.getSessions();
+          break;  
+        default:
+          this._lastPulledFilter = '';
+          this._lastPulledType = null;
+          this._lastPulledSearchResults = [];
+          this._lastPulledRowCount = 0;
+          return;  
+      }
+
+      results = results.filter((i)=>(i.name.toLowerCase().startsWith(this._shownFilter.toLowerCase())));
+
+      this._lastPulledRowCount = results.length;
+      this._lastPulledSearchResults = results;
+      return;
+    } catch (_e) {
+      throw new Error('Autocomplete mentions thought there was Campaign Builder but api failed');
+    }
+  }
+  
   // maxResultCount is the max number of matches desired
-  private async _searchCompendia(maxResultCount: number, documentName: string): Promise<DocumentType11[]> {
+  private async _searchCompendia(maxResultCount: number, documentName: string): Promise<DocumentType[]> {
     // No need to do anything if there is no place for any result.
     if (maxResultCount < 1)
       return [];
 
     // Check in the settings what are the compendium to include.
-    const includedCompendia = moduleSettings.get(SettingKeys.includedCompendia);
+    const includedCompendia = ModuleSettings.get(SettingKeys.includedCompendia);
     if (!includedCompendia)
       return [];
 
-    let results = [] as DocumentType11[];
+    let results = [] as DocumentType[];
     const query = SearchFilter.cleanQuery(this._shownFilter);
     const queryRegex = new RegExp(RegExp.escape(query), "i");
 
     const compendia = includedCompendia.split(',');
     for (const compendium of compendia) {
       const compendiumRegEx = new RegExp(compendium.trim());
-      const compMatchs = getGame().packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
+      const compMatchs = game.packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
       for (const compMatch of compMatchs) {
         // find any matching docs
         const matches = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
-        const matchdocs = (await compMatch.getDocuments({ _id__in: matches })) as DocumentType11[];
+        const matchdocs = (await compMatch.getDocuments({ _id__in: matches })) as DocumentType[];
         results = results.concat(matchdocs);
 
         if (results.length >= maxResultCount)
@@ -695,14 +826,19 @@ export class Autocompleter extends Application {
     this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
     this._focusedMenuKey = 0;
     this._searchingFromJournalPage = (docType === ValidDocType.Journal && this._currentDoc?.documentName === 'JournalEntryPage');
+    
     await this._refreshSearch();
   }
-
-  private _insertReferenceAndClose(uuid: string): void {
+  private _insertReferenceAndClose(uuid: string, name?: string): void {
     // convert any highlighted text into the manual label for the link
     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
-    const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
-    this._insertTextAndClose(`@UUID[${uuid}]${label}`);
+
+    if (name)
+      this._insertTextAndClose(`@UUID[${uuid}]{${name}}`);
+    else {
+      const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
+      this._insertTextAndClose(`@UUID[${uuid}]${label}`);
+    }
   }
 
   private _insertTextAndClose(text: string): void {
@@ -711,26 +847,88 @@ export class Autocompleter extends Application {
     void this.close();
   }
 
+  /** Create a new document of the given type.  Creates entries, etc. when in FCB or regular editor. */
+  private async _createFCBDocument(docTypeInfo: DocType): Promise<void> {
+    // register the hook to catch after the document is made
+    // we need to save the current editor selection because it goes away when the new boxes pop up
+    const selection = this._editor.ownerDocument.getSelection();
+    const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
+
+    // in theory campaign-builder must be installed since we got here because we're in an fcb div... but 
+    //    maybe some other module is conflicting
+    try {
+      const api = game.modules.get('campaign-builder').api;
+      let newItem: { uuid: string; name: string; } | null = null;
+
+      switch (docTypeInfo.type) {
+        case ValidDocType.Character:
+          newItem = await api.createEntry(api.TOPICS.Character);
+          break;
+        case ValidDocType.Location:
+          newItem = await api.createEntry(api.TOPICS.Location);
+          break;
+        case ValidDocType.Organization:
+          newItem = await api.createEntry(api.TOPICS.Organization);
+          break;
+        case ValidDocType.World:
+          // can't create a world from inside another because it would lead to a cross-link
+          break;
+        case ValidDocType.Campaign:
+          newItem = await api.createCampaign();
+          break;
+        case ValidDocType.Session:
+          // can't create sessions for now - would require picking a campaign
+          break;  
+        default:
+          return;  
+      }
+
+      if (newItem) {
+        if (range) {
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+        this._insertReferenceAndClose(newItem.uuid, newItem.name);
+      }
+
+    } catch (_e) {
+      throw new Error('Autocomplete mentions thought there was Campaign Builder but api failed');
+    }
+  }
+
   private async _createDocument(docType: ValidDocType): Promise<void> {
-    const docTypeInfo = docTypes.find((dt)=>(dt.type===docType));
+    const docTypeInfo = this.currentDocTypes.find((dt) => dt.type === docType);
+
     if (!docTypeInfo)
       return;
 
+    if (docTypeInfo.isFCB) {
+      await this._createFCBDocument(docTypeInfo);
+    } else {
+      await this._createFoundryDocument(docTypeInfo);
+    }
+  }
+
+  /** creates a new Foundry Document in FCB or regular editor.   */
+  private async _createFoundryDocument(docTypeInfo: DocType): Promise<void> {
     let pack = null as string | null;
     let folder = null as string | null;
-    let parent = null as JournalEntry11 | null;
+    let parent = null as JournalEntry | null;
     let sort = null as number | null;
     let documentName = '';
 
-    const collection = getGame()[docTypeInfo.collectionName] as DocumentType11;
-    const curMainDoc = (this._currentDoc?.parent ?? this._currentDoc) as DocumentType11;
+    const collection = game[docTypeInfo.collectionName] as DocumentType;
+    const curMainDoc = (this._currentDoc?.parent ?? this._currentDoc) as DocumentType;
 
     if (this._currentMode === AutocompleteMode.journalPageSearch) {
       // We are creating a new page in a journal; set the journal as parent
       //    and add it at the end of the journal
-      parent = this._selectedJournal?.parentJournal as JournalEntry11;
+      parent = this._selectedJournal?.parentJournal as JournalEntry;
       sort = (this._selectedJournal?.parentJournal?.pages.contents.at(-1)?.sort ?? 0) + CONST.SORT_INTEGER_DENSITY;
       documentName ='JournalEntryPage'; 
+    } else if (this._isCampaignBuilder) {
+      // if FCB editor, so no document
+      documentName = collection.documentName;
     } else if (curMainDoc.documentName === collection.documentName) {
       // We are creating a new entry of the same type of the document we are editing;
       //    create it in the same pack/compendium and folder.
@@ -751,7 +949,7 @@ export class Autocompleter extends Application {
     const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
 
     const cls = getDocumentClass(documentName) as any;
-    cls.createDialog(data, options).then(async (result: DocumentType11 | null): void => {
+    cls.createDialog(data, options).then(async (result: DocumentType | null): void => {
       if (result) {
         // it was created
 
@@ -761,8 +959,8 @@ export class Autocompleter extends Application {
         //    so we instead change the prompt label and then look for them
         //    leaving the prompt showing (by typing nothing)
         if (this._shownFilter.length > 0) {
-          const label = getGame().i18n.localize(cls.metadata.label);
-          const docDefaultName = getGame().i18n.format('DOCUMENT.New', { type: label });
+          const label = game.i18n.localize(cls.metadata.label);
+          const docDefaultName = game.i18n.format('DOCUMENT.New', { type: label });
           if (result.name?.startsWith(docDefaultName)) {
             await result.update({ name: this._shownFilter });
           }

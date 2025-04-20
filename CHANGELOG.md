@@ -5,6 +5,7 @@
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.0.0/module.zip)
 
 - Update compatibility to support Foundry v13.  There are breaking changes - continue to use v1.1.1 for prior Foundry versions.
+- Support for Campaign Builder module - allows you to mention characters, locations, organizations, campaigns, and sessions.  
 
 ## v1.1.1 - Update version support to 12.331
 ![](https://img.shields.io/badge/release%20date-August%2017%2C%202024-blue)

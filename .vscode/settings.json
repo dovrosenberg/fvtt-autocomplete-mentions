@@ -1,4 +1,5 @@
 {
     "files.insertFinalNewline": false,
-    "editor.formatOnSave": false
+    "editor.formatOnSave": false,
+    "zencoder.enableRepoIndexing": true
 }

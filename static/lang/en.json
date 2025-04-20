@@ -12,7 +12,15 @@
         "items": "Items",
         "journals": "Journal Entries/Pages",
         "rollTables": "Roll Tables",
-        "scenes": "Scenes"
+        "scenes": "Scenes",
+
+        "characters": "Characters",
+        "locations": "Locations",
+        "organizations": "Organizations",
+        "worlds": "World",
+        "campaigns": "Campaigns",
+        "sessions": "Sessions"
+
       },
       "keys": {
         "NOTE:": "These should generally be the 1st letter of the titles",
@@ -20,7 +28,14 @@
         "items": "I",
         "journals": "J",
         "rollTables": "R",
-        "scenes": "S"
+        "scenes": "S",
+
+        "characters": "C",
+        "locations": "L",
+        "organizations": "O",
+        "worlds": "W",
+        "campaigns": "N",
+        "sessions": "E"
       }
     }
   }
