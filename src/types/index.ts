@@ -13,7 +13,7 @@ export type WindowPosition = {
 export type SearchResult = {
   uuid: string;
   name: string;
-  parentJournal?: JournalEntry11
+  parentJournal?: JournalEntry
 }
 
 export enum ValidDocType {
@@ -37,20 +37,4 @@ export enum EditorType {
   TinyMCE
 }
 
-// Below are some foundry type amendments.Since Foundry Types are supported up to 10,
-// any definition added by version 11 are below.Those are not real definitions.
-// They are only close enough to make the compilation with fewer false errors.
-export type ui11 = typeof ui & {
-  activeWindow: DocumentSheet
-}
-
-export type DocumentType11 = (Actor | Scene | JournalEntry | RollTable | Item) & {
-  search(options: { query: string, filters?: string[], exclude?: string[] })
-}
-
-export type JournalEntry11 = typeof JournalEntry & {
-  pages: JournalEntry11
-  contents: { at(idx: number): JournalEntry11 }
-  sort: number
-  search(options: { query: string, filters?: string[], exclude?: string[] })
-}
+export type DocumentType = (Actor | Scene | JournalEntry | RollTable | Item);

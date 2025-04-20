@@ -1,4 +1,4 @@
-import { getGame, localize } from '@/utils/game';
+import { localize } from '@/utils/game';
 import moduleJson from '@module';
 
 export enum SettingKeys {
@@ -19,19 +19,19 @@ export class ModuleSettings {
   }
 
   public static get<T extends SettingKeys>(setting: T): SettingType<T> {
-    return getGame().settings.get(moduleJson.id, setting) as SettingType<T>;
+    return game.settings.get(moduleJson.id, setting) as SettingType<T>;
   }
 
   public static async set<T extends SettingKeys>(setting: T, value: SettingType<T>): Promise<void> {
-    await getGame().settings.set(moduleJson.id, setting, value);
+    await game.settings.set(moduleJson.id, setting, value);
   }
 
   private static register(settingKey: string, settingConfig: ClientSettings.PartialSettingConfig) {
-    getGame().settings.register(moduleJson.id, settingKey, settingConfig);
+    game.settings.register(moduleJson.id, settingKey, settingConfig);
   }
 
   private static registerMenu(settingKey: string, settingConfig: ClientSettings.PartialSettingSubmenuConfig) {
-    getGame().settings.registerMenu(moduleJson.id, settingKey, settingConfig);
+    game.settings.registerMenu(moduleJson.id, settingKey, settingConfig);
   }
 
   // these are local menus (shown at top)
