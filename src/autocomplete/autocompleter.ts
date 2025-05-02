@@ -33,7 +33,7 @@ let campaignBuilderDocTypes = [] as DocType[];
       Have an option to create a new one (???) + options for 1st n choices
       As you type more letters, choices filter down
 
-      note: if you pick journalentries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
+      note: if you pick journalEntries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
           then filter like the document choices)
   */
 
@@ -171,7 +171,7 @@ export class Autocompleter extends Application {
       shownFilter: this._shownFilter,
       hasMore: (this._lastPulledRowCount || 0) > (this._filteredSearchResults?.length || 0),
       isCampaignBuilder: this._isCampaignBuilder,
-      noCreate: !this._currentSearchDocType?.canCreate,
+      noCreate: !this.currentSearchDocType?.canCreate,
     };
     //log(false, data);
 
@@ -277,7 +277,7 @@ export class Autocompleter extends Application {
 
     // pretend we clicked in
     this._focusedMenuKey = Number.parseInt(index);
-    await this._onKeydown({key: 'Enter', preventDefault: ()=>{}, stopPropagation: ()=>{}} as KeyboardEvent);
+    await this._onKeydown({key: 'Enter', preventDefault: ()=> {}, stopPropagation: ()=>{}} as KeyboardEvent);
   };
 
   private _onListMouseover = async (event: MouseEvent): Promise<void> => {
@@ -342,7 +342,7 @@ export class Autocompleter extends Application {
           }
 
           default: {
-            // see if it's one of the valid keypresses
+            // see if it's one of the valid key presses
             const match = currentDocTypes.find((dt)=>(dt.keypress.toLocaleLowerCase()===event.key.toLocaleLowerCase()));
 
             if (match) {
@@ -374,7 +374,7 @@ export class Autocompleter extends Application {
         } else {
           // handle special keys
 
-          // Before the searche result we can have one or two specion command:
+          // Before the search result we can have one or two special commands:
           //   - Create New (always there)
           //   - Select current Journal (in search journal page only)
           const resultStartOffset = this._initialSearchOffset();
@@ -452,7 +452,7 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    if (this.currentSearchDocType.isFCB)
+                    if (this.currentSearchDocType?.isFCB)
                       this._insertReferenceAndClose(item.uuid, item.name);
                     else
                       this._insertReferenceAndClose(item.uuid);
@@ -463,7 +463,7 @@ export class Autocompleter extends Application {
             }
 
             case 'Backspace': {
-              // if the shownfilter is empty, go back to singleAtWaiting mode
+              // if the shownFilter is empty, go back to singleAtWaiting mode
               if (this._shownFilter.length === 0) {
                 if (this._currentMode===AutocompleteMode.docSearch) {
                   this._currentMode = AutocompleteMode.singleAtWaiting;
@@ -535,7 +535,7 @@ export class Autocompleter extends Application {
     // if we don't have any, it's probably the beginning of a newline, which works strange
     if(!rects.length) {
       if(range.startContainer && range.collapsed) {
-        // explicitely select the contents
+        // explicitly select the contents
         range.selectNodeContents(range.startContainer);
       }
       rects = range.getClientRects();
@@ -548,7 +548,7 @@ export class Autocompleter extends Application {
 
     const rect = rects[0];  // this is the location of the cursor
 
-    let adjustmentRect = { left: 0, top: 0 };
+    const adjustmentRect = { left: 0, top: 0 };
 
     // return coord
     //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
@@ -584,7 +584,7 @@ export class Autocompleter extends Application {
     const FULL_TEXT_SEARCH = true; //TODO: pull from settings
 
     if (FULL_TEXT_SEARCH || (this._lastPulledType !== this._searchDocType) ||
-        (!this._lastPulledFilter || !this._shownfilter.toLowerCase().startsWith(this._lastPulledFilter.toLowerCase()))) {
+        (!this._lastPulledFilter || !this._shownFilter.toLowerCase().startsWith(this._lastPulledFilter.toLowerCase()))) {
       // we need to refresh
       // clear the current results so they don't show while we're waiting
       this._filteredSearchResults = [];
@@ -793,24 +793,24 @@ export class Autocompleter extends Application {
     if (maxResultCount < 1)
       return [];
 
-    // Check in the settings what are the compendium to include.
+    // Check in the settings what are the compendia to include.
     const includedCompendia = ModuleSettings.get(SettingKeys.includedCompendia);
     if (!includedCompendia)
       return [];
 
     let results = [] as DocumentType[];
     const query = SearchFilter.cleanQuery(this._shownFilter);
-    const queryRegex = new RegExp(RegExp.escape(query), "i");
+    const queryRegex = new RegExp(RegExp.escape(query), 'i');
 
     const compendia = includedCompendia.split(',');
     for (const compendium of compendia) {
       const compendiumRegEx = new RegExp(compendium.trim());
-      const compMatchs = game.packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
-      for (const compMatch of compMatchs) {
+      const compMatches = game.packs.filter(p => compendiumRegEx.test(p.collection) && p.documentName === documentName);
+      for (const compMatch of compMatches) {
         // find any matching docs
         const matches = compMatch.index.filter(r => r.name !== undefined && queryRegex.test(r.name)).map(c => c._id);
-        const matchdocs = (await compMatch.getDocuments({ _id__in: matches })) as DocumentType[];
-        results = results.concat(matchdocs);
+        const matchDocs = (await compMatch.getDocuments({ _id__in: matches })) as DocumentType[];
+        results = results.concat(matchDocs);
 
         if (results.length >= maxResultCount)
           return results;
