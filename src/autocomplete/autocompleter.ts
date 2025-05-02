@@ -33,7 +33,7 @@ let campaignBuilderDocTypes = [] as DocType[];
       Have an option to create a new one (???) + options for 1st n choices
       As you type more letters, choices filter down
 
-      note: if you pick journalentries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
+      note: if you pick journalEntries, once you pick the entry, you get a followup item with a choice to pick the entry + a list of pages (which
           then filter like the document choices)
   */
 
