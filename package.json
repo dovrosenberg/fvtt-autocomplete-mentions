@@ -18,7 +18,7 @@
     "tsc": "tsc --noEmit --skipLibCheck",
     "unlinkdata": "unlink ~/foundry13data/Data/modules/autocomplete-mentions",
     "buildcopy": "npm run build && npm run copy",
-    "foundry": "node ~/foundry13/resources/app/main.js"
+    "foundry": "node ~/foundry13/resources/app/main.js --dataPath=/home/dov/foundry13data"
  },
   "devDependencies": {
     "@league-of-foundry-developers/foundry-vtt-types": "github:League-of-Foundry-Developers/foundry-vtt-types#main",
