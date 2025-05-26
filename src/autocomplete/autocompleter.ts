@@ -426,12 +426,7 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    // FCB items need names, the others we want to leave blank
-                    if (this.currentSearchDocType?.isFCB) {
-                      this._insertReferenceAndClose(item.uuid, item.name);
-                    } else {
-                      this._insertReferenceAndClose(item.uuid);
-                    }
+                    this._insertReferenceAndClose(item.uuid);
                   }
                 }
               } else {
@@ -452,10 +447,7 @@ export class Autocompleter extends Application {
 
                   // insert the appropriate text
                   if (item) {
-                    if (this.currentSearchDocType?.isFCB)
-                      this._insertReferenceAndClose(item.uuid, item.name);
-                    else
-                      this._insertReferenceAndClose(item.uuid);
+                    this._insertReferenceAndClose(item.uuid);
                   }
                 }
               }
@@ -888,7 +880,7 @@ export class Autocompleter extends Application {
           selection?.removeAllRanges();
           selection?.addRange(range);
         }
-        this._insertReferenceAndClose(newItem.uuid, newItem.name);
+        this._insertReferenceAndClose(newItem.uuid);
       }
 
     } catch (_e) {

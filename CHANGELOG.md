@@ -1,5 +1,11 @@
 # Change Log
 
+## v2.0.2 - FCB links no longer hard code names
+![](https://img.shields.io/badge/release%20date-May%2026%2C%202025-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.0.2/module.zip)
+
+- When inserting links into Foundry World & Campaign Builder, it no longer hard codes the names (instead allowing the editor to do an auto-lookup)
+
 ## v2.0.1 - Minor (and major?) bug fixes
 ![](https://img.shields.io/badge/release%20date-May%2024%2C%202025-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.0.1/module.zip)
