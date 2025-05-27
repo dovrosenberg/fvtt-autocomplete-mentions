@@ -566,8 +566,9 @@ export class Autocompleter extends Application {
 
   // refresh the search results, if needed
   // has the filter changed in a way that we need to refresh the search results?
-  // we only refresh the results if a) the active filter isn't an extension of the last searched one or
-  //    b) the last search told us there were more rows than we pulled for the prior search
+  // we only refresh the results if 
+  //    a) the active filter isn't an extension of the last searched one or
+  //    b) the last search told us there were more rows than we pulled for the prior search 
   private _refreshSearch = async function(): Promise<void> {
     // when do we NOT need to refresh the main search results?
     //   * we're not using full text (because we don't have a way to further filter here)
@@ -588,7 +589,7 @@ export class Autocompleter extends Application {
     }
 
     // if there's at least one result, select it  
-    // TODO - check this... should it be >=2 when _searchingFromJournalPage
+    // TODO - check this... should it be >=2 when _searchingFromJournalPage?
     this._filteredSearchResults = this._getFilteredSearchResults();
     if (this._filteredSearchResults.length >=1) {
       this._focusedMenuKey = this._initialSearchOffset();
@@ -769,7 +770,7 @@ export class Autocompleter extends Application {
           return;  
       }
 
-      results = results.filter((i)=>(i.name.toLowerCase().startsWith(this._shownFilter.toLowerCase())));
+      results = results.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
 
       this._lastPulledRowCount = results.length;
       this._lastPulledSearchResults = results;

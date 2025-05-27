@@ -1,5 +1,12 @@
 # Change Log
 
+## v2.1.0 - List filters by any match - not just at the start of a name
+![](https://img.shields.io/badge/release%20date-May%2026%2C%202025-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.0/module.zip)
+
+- The filter as you type used to only match the beginning of a document name - now it will match against anything; so (for example)
+if you search "bla" it will now match "The Black Marsh" and not just "Black Marsh"
+
 ## v2.0.2 - FCB links no longer hard code names
 ![](https://img.shields.io/badge/release%20date-May%2026%2C%202025-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.0.2/module.zip)
