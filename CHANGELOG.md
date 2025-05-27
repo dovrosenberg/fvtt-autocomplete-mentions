@@ -1,6 +1,6 @@
 # Change Log
 
-## v2.1.0 - List filters by any match - not just at the start of a name
+## v2.1.1 - List filters by any match - not just at the start of a name
 ![](https://img.shields.io/badge/release%20date-May%2026%2C%202025-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.0/module.zip)
 
