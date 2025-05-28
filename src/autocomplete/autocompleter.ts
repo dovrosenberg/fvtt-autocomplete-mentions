@@ -80,6 +80,13 @@ export class Autocompleter extends Application {
   /** whether we're in campaign builder mode */
   private _isCampaignBuilder = false;
 
+  /** positioning mode tracking */
+  private _isPositionedAbove = false;
+  private _isPositionedLeft = false;
+
+  /** store the corrected cursor rectangle for use in position adjustments */
+  private _cursorRect: DOMRect | null = null;
+
   /////////////////////////////
   // status
   private _currentMode: AutocompleteMode;
@@ -244,6 +251,12 @@ export class Autocompleter extends Application {
 
   public async render(force?: boolean) {
     const result = await super.render(force);
+    
+    // Recalculate position after rendering to use actual dimensions
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      this._adjustPositionAfterRender();
+    });
     
     return result;
   }
@@ -527,24 +540,125 @@ export class Autocompleter extends Application {
     // if we don't have any, it's probably the beginning of a newline, which works strange
     if(!rects.length) {
       if(range.startContainer && range.collapsed) {
-        // explicitly select the contents
-        range.selectNodeContents(range.startContainer);
+        // Try different approaches to get cursor position
+        if (range.startContainer.nodeType === Node.TEXT_NODE) {
+          // For text nodes, try to get position at the current offset
+          const tempRange = range.cloneRange();
+          if (range.startOffset > 0) {
+            // Try selecting the character before the cursor
+            tempRange.setStart(range.startContainer, range.startOffset - 1);
+            tempRange.setEnd(range.startContainer, range.startOffset);
+            const tempRects = tempRange.getClientRects();
+            if (tempRects.length > 0) {
+              rects = tempRects;
+            }
+          } else {
+            // At the beginning of a text node, select the whole node
+            tempRange.selectNodeContents(range.startContainer);
+            rects = tempRange.getClientRects();
+          }
+        } else {
+          // For element nodes, select the contents
+          range.selectNodeContents(range.startContainer);
+          rects = range.getClientRects();
+        }
       }
-      rects = range.getClientRects();
     }
+    
     if (rects.length <= 0) return null;
 
-    // get editor position
+    let rect = rects[0];  // this is the location of the cursor
+
+    // Check if we got a degenerate rectangle (zero width specifically)
+    // This happens when cursor is at the very left edge of elements
+    if (rect.width === 0) {
+      // The cursor's top position is still correct, we just need to fix the left position
+      let parentElement = range.startContainer;
+      if (parentElement.nodeType === Node.TEXT_NODE) {
+        parentElement = parentElement.parentElement;
+      }
+      
+      if (parentElement && parentElement.getBoundingClientRect) {
+        const parentRect = parentElement.getBoundingClientRect();
+        
+        // Use the parent's left position but keep the cursor's top position
+        rect = {
+          left: parentRect.left,
+          top: rect.top, // Keep the original cursor top position
+          right: parentRect.left,
+          bottom: rect.top + 16,
+          width: 0,
+          height: 16,
+          x: parentRect.left,
+          y: rect.top // Keep the original cursor top position
+        } as DOMRect;
+      }
+    }
+
+    // Store the corrected cursor rectangle for use in position adjustments
+    this._cursorRect = rect;
+
+    // get editor position for reference (though we're using viewport coordinates)
     const editorRect = this._editor?.getBoundingClientRect();
     if (!editorRect) return null;
 
-    const rect = rects[0];  // this is the location of the cursor
+    // Calculate initial position using viewport coordinates
+    let left = rect.left + paddingLeft;
+    let top = rect.top + paddingTop;
 
-    const adjustmentRect = { left: 0, top: 0 };
+    // Reset positioning mode flags
+    this._isPositionedAbove = false;
+    this._isPositionedLeft = false;
+
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Estimate autocomplete box dimensions
+    // These are rough estimates based on the CSS styling
+    const estimatedBoxWidth = 300; // min-width from CSS
+    const estimatedBoxHeight = 200; // rough estimate for typical content
+
+    // Check if the box would extend beyond the right edge of the viewport
+    if (left + estimatedBoxWidth > viewportWidth) {
+      // Position to the left of the cursor instead
+      left = rect.left - estimatedBoxWidth - paddingLeft;
+      this._isPositionedLeft = true;
+      // Ensure it doesn't go off the left edge
+      if (left < 0) {
+        left = Math.max(0, viewportWidth - estimatedBoxWidth);
+      }
+    }
+
+    // Check if the box would extend beyond the bottom edge of the viewport
+    if (top + estimatedBoxHeight > viewportHeight) {
+      // Position above the cursor instead
+      // Add extra padding to avoid being too close to the text line
+      const extraPaddingAbove = 5; // Additional space when positioned above
+      const idealTop = rect.top - estimatedBoxHeight - paddingTop - extraPaddingAbove;
+      
+      // Check if there's enough space above (with some margin for safety)
+      const minTopMargin = 10; // Minimum space from top of viewport
+      if (idealTop >= minTopMargin) {
+        top = idealTop;
+        this._isPositionedAbove = true;
+      } else {
+        // Check if the total window height is just too small for the box
+        const totalNeededHeight = estimatedBoxHeight + extraPaddingAbove + paddingTop + 20; // cursor line height estimate
+        if (viewportHeight < totalNeededHeight) {
+          // Window is too small, constrain below
+          this._isPositionedAbove = false;
+          top = Math.min(rect.top + paddingTop, viewportHeight - estimatedBoxHeight);
+        } else {
+          // Window is big enough, position above even if tight
+          this._isPositionedAbove = true;
+          top = Math.max(minTopMargin, idealTop);
+        }
+      }
+    }
 
     // return coord
-    //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
-    return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
+    return { left, top }
   };
 
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
@@ -974,4 +1088,125 @@ export class Autocompleter extends Application {
   private _initialSearchOffset = (): number => (
     this._searchingFromJournalPage || this._currentMode === AutocompleteMode.journalPageSearch ? 2 : 1
   );
+
+  private _adjustPositionAfterRender(): void {
+    const wrapper = document.querySelector('.acm-autocomplete') as HTMLElement;
+    if (!wrapper) return;
+
+    // Get actual dimensions of the rendered autocomplete box
+    const boxRect = wrapper.getBoundingClientRect();
+    const boxWidth = boxRect.width;
+    const boxHeight = boxRect.height;
+
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Use the stored cursor rectangle (which has been corrected for zero-width cases)
+    if (!this._cursorRect) return;
+    const cursorRect = this._cursorRect;
+
+    const paddingLeft = 10;
+    const paddingTop = 0;
+
+    let left = this._location.left;
+    let top = this._location.top;
+    let needsUpdate = false;
+
+    // Handle horizontal positioning
+    if (this._isPositionedLeft) {
+      // When positioned to the left, keep the right edge anchored to the cursor
+      const newLeft = cursorRect.left - boxWidth - paddingLeft;
+      if (newLeft >= 0) {
+        left = newLeft;
+      } else {
+        // If it would go off the left edge, position it at the left edge
+        left = 0;
+      }
+      needsUpdate = true;
+    } else {
+      // Normal positioning (to the right of cursor)
+      const normalLeft = cursorRect.left + paddingLeft;
+      
+      // Check if we need to switch to left positioning
+      if (normalLeft + boxWidth > viewportWidth) {
+        // Switch to left positioning
+        this._isPositionedLeft = true;
+        left = Math.max(0, cursorRect.left - boxWidth - paddingLeft);
+        needsUpdate = true;
+      } else if (left !== normalLeft) {
+        // Update to normal position if it changed
+        left = normalLeft;
+        needsUpdate = true;
+      }
+    }
+
+    // Handle vertical positioning
+    if (this._isPositionedAbove) {
+      // When positioned above, keep the bottom edge anchored to the cursor
+      // Add extra padding to avoid being too close to the text line
+      const extraPaddingAbove = 5; // Additional space when positioned above
+      const idealTop = cursorRect.top - boxHeight - paddingTop - extraPaddingAbove;
+      
+      // Only switch back to below if there's genuinely not enough space above
+      const minTopMargin = 10; // Minimum space from top of viewport
+      if (idealTop < minTopMargin) {
+        // Check if the total window height is just too small for the box
+        const totalNeededHeight = boxHeight + extraPaddingAbove + paddingTop + 20; // cursor line height estimate
+        if (viewportHeight < totalNeededHeight) {
+          // Window is too small, switch to below and constrain
+          this._isPositionedAbove = false;
+          top = Math.min(cursorRect.top + paddingTop, viewportHeight - boxHeight);
+        } else {
+          // Window is big enough, stay above but adjust to fit
+          top = Math.max(minTopMargin, idealTop);
+        }
+      } else {
+        // Plenty of space above, use ideal position
+        top = idealTop;
+      }
+      needsUpdate = true;
+    } else {
+      // Normal positioning (below cursor)
+      const normalTop = cursorRect.top + paddingTop;
+      
+      // Check if we need to switch to above positioning
+      if (normalTop + boxHeight > viewportHeight) {
+        // Check if we have enough space above for proper positioning
+        const extraPaddingAbove = 5; // Additional space when positioned above
+        const idealTopAbove = cursorRect.top - boxHeight - paddingTop - extraPaddingAbove;
+        
+        // Check if there's enough space above (with some margin for safety)
+        const minTopMargin = 10; // Minimum space from top of viewport
+        if (idealTopAbove >= minTopMargin) {
+          // Switch to above positioning
+          this._isPositionedAbove = true;
+          top = idealTopAbove;
+        } else {
+          // Check if the total window height is just too small for the box
+          const totalNeededHeight = boxHeight + extraPaddingAbove + paddingTop + 20; // cursor line height estimate
+          if (viewportHeight < totalNeededHeight) {
+            // Window is too small, constrain below
+            top = Math.min(normalTop, viewportHeight - boxHeight);
+          } else {
+            // Window is big enough, position above even if tight
+            this._isPositionedAbove = true;
+            top = Math.max(minTopMargin, idealTopAbove);
+          }
+        }
+        needsUpdate = true;
+      } else if (top !== normalTop) {
+        // Update to normal position if it changed
+        top = normalTop;
+        needsUpdate = true;
+      }
+    }
+
+    // Update the position if it changed
+    if (needsUpdate) {
+      this._location = { left, top };
+      wrapper.style.left = `${left}px`;
+      wrapper.style.top = `${top}px`;
+    }
+  }
 }
