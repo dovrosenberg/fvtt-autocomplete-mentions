@@ -145,7 +145,7 @@ export class PositionCalculator {
     };
   }
 
-\  private _adjustForHorizontalConstraints(
+  private _adjustForHorizontalConstraints(
     position: WindowPosition, 
     cursorRect: DOMRect, 
     viewport: { width: number; height: number }
