@@ -1,8 +1,14 @@
 # Change Log
 
+## v2.1.2 - Fixed positioning off screen
+![](https://img.shields.io/badge/release%20date-May%2028%2C%202025-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.2/module.zip)
+
+- The box now pops up to the top/left of the cursor if needed to avoid going off the edge of the window
+
 ## v2.1.1 - List filters by any match - not just at the start of a name
 ![](https://img.shields.io/badge/release%20date-May%2026%2C%202025-blue)
-![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.0/module.zip)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.1/module.zip)
 
 - The filter as you type used to only match the beginning of a document name - now it will match against anything; so (for example)
 if you search "bla" it will now match "The Black Marsh" and not just "Black Marsh"
