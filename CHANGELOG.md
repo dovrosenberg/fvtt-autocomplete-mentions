@@ -1,5 +1,13 @@
 # Change Log
 
+## v2.2.0 - Support for new PCs functionality coming in Campaign Builder 1.1.0
+![](https://img.shields.io/badge/release%20date-July%2028%2C%202025-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.2.0/module.zip)
+
+- Support for Campaign Builder PCs - requires Campaign Builder 1.1.0 or later.  
+- For types that can't be created, the "create new" option is now hidden instead of disabled.
+- Added a setting for whether you want a hardcoded name inserted or not
+
 ## v2.1.2 - Fixed positioning off screen
 ![](https://img.shields.io/badge/release%20date-May%2028%2C%202025-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.1.2/module.zip)

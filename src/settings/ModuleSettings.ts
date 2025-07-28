@@ -4,13 +4,15 @@ import moduleJson from '@module';
 export enum SettingKeys {
   // displayed in settings
   resultLength = 'resultLength',
-  includedCompendia = 'includedCompendia'
+  includedCompendia = 'includedCompendia',
+  addName = 'addName',
   // internal only
 }
 
 type SettingType<K extends SettingKeys> =
     K extends SettingKeys.resultLength ? number :
     K extends SettingKeys.includedCompendia ? string :
+    K extends SettingKeys.addName ? boolean :
     never;  
 
 export class ModuleSettings {
@@ -54,6 +56,13 @@ export class ModuleSettings {
       hint: 'acm.settings.includedCompendiaHelp',
       default: '',
       type: String,
+    },
+    {
+      settingID: SettingKeys.addName,
+      name: 'acm.settings.addName',
+      hint: 'acm.settings.addNameHelp',
+      default: true,
+      type: Boolean,
     }
   ];
 
