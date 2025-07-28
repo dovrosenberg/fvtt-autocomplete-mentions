@@ -3,6 +3,7 @@ import { log } from '@/utils/log';
 import { localize } from '@/utils/game';
 import { ValidDocType, WindowPosition, SearchResult, AutocompleteMode, EditorType, DocumentType, } from '@/types';
 import { ModuleSettings, SettingKeys } from '@/settings/ModuleSettings';
+import { PositionCalculator } from './PositionCalculator';
 
 // isFCB is whether it's normal foundry or FCB
 // keypress and title show in the menu to pick a type
@@ -81,6 +82,9 @@ export class Autocompleter extends Application {
   /** whether we're in campaign builder mode */
   private _isCampaignBuilder = false;
 
+  /** handles all positioning logic */
+  private _positionCalculator = new PositionCalculator();
+
   /////////////////////////////
   // status
   private _currentMode: AutocompleteMode;
@@ -127,7 +131,7 @@ export class Autocompleter extends Application {
     
     this._onClose = onClose;
 
-    this._location = this._getSelectionCoords(10, 0) || { left: 0, top: 0 };
+    this._location = this._positionCalculator.calculateInitialPosition(this._editor) || { left: 0, top: 0 };
 
     void this.render();
   }
@@ -245,6 +249,20 @@ export class Autocompleter extends Application {
 
   public async render(force?: boolean) {
     const result = await super.render(force);
+    
+    // Recalculate position after rendering to use actual dimensions
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      const wrapper = document.querySelector('.acm-autocomplete') as HTMLElement;
+      if (wrapper) {
+        const newPosition = this._positionCalculator.adjustPositionAfterRender(wrapper);
+        if (newPosition) {
+          this._location = newPosition;
+          wrapper.style.left = `${newPosition.left}px`;
+          wrapper.style.top = `${newPosition.top}px`;
+        }
+      }
+    });
     
     return result;
   }
@@ -519,43 +537,6 @@ export class Autocompleter extends Application {
     await this.render();
   };
           
-  private _getSelectionCoords = function(paddingLeft: number, paddingTop: number): WindowPosition | null {
-    const sel = this._editor.ownerDocument.getSelection();
-
-    // check if selection exists
-    if (!sel || !sel.rangeCount) return null;
-
-    // get range
-    const range = sel.getRangeAt(0).cloneRange();
-    if (!range.getClientRects()) return null;
-
-    // get client rect
-    range.collapse(false);
-    let rects = range.getClientRects();
-
-    // if we don't have any, it's probably the beginning of a newline, which works strange
-    if(!rects.length) {
-      if(range.startContainer && range.collapsed) {
-        // explicitly select the contents
-        range.selectNodeContents(range.startContainer);
-      }
-      rects = range.getClientRects();
-    }
-    if (rects.length <= 0) return null;
-
-    // get editor position
-    const editorRect = this._editor?.getBoundingClientRect();
-    if (!editorRect) return null;
-
-    const rect = rects[0];  // this is the location of the cursor
-
-    const adjustmentRect = { left: 0, top: 0 };
-
-    // return coord
-    //return { x: rect.x - editorRect.left + paddingLeft, y: rect.y - editorRect.top + paddingTop };    
-    return { left: rect.left + adjustmentRect.left + paddingLeft, top: rect.top + adjustmentRect.top + paddingTop }
-  };
-
   // _lastPulledSearchResults contains the full set of what we got back last time we pulled
   private _getFilteredSearchResults(): SearchResult[] {
     const FULL_TEXT_SEARCH = true; // TODO (for now, only name is searchable anyway)
@@ -575,8 +556,9 @@ export class Autocompleter extends Application {
 
   // refresh the search results, if needed
   // has the filter changed in a way that we need to refresh the search results?
-  // we only refresh the results if a) the active filter isn't an extension of the last searched one or
-  //    b) the last search told us there were more rows than we pulled for the prior search
+  // we only refresh the results if 
+  //    a) the active filter isn't an extension of the last searched one or
+  //    b) the last search told us there were more rows than we pulled for the prior search 
   private _refreshSearch = async function(): Promise<void> {
     // when do we NOT need to refresh the main search results?
     //   * we're not using full text (because we don't have a way to further filter here)
@@ -597,7 +579,7 @@ export class Autocompleter extends Application {
     }
 
     // if there's at least one result, select it  
-    // TODO - check this... should it be >=2 when _searchingFromJournalPage
+    // TODO - check this... should it be >=2 when _searchingFromJournalPage?
     this._filteredSearchResults = this._getFilteredSearchResults();
     if (this._filteredSearchResults.length >=1) {
       this._focusedMenuKey = this._initialSearchOffset();
@@ -781,7 +763,7 @@ export class Autocompleter extends Application {
           return;  
       }
 
-      results = results.filter((i)=>(i.name.toLowerCase().startsWith(this._shownFilter.toLowerCase())));
+      results = results.filter((i)=>(i.name.toLowerCase().includes(this._shownFilter.toLowerCase())));
 
       this._lastPulledRowCount = results.length;
       this._lastPulledSearchResults = results;
