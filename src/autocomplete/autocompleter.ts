@@ -55,6 +55,7 @@ export function initializeLocalizedText(): void {
     { isFCB: true, type: ValidDocType.Character, keypress: localize('acm.documents.keys.characters'), title: localize('acm.documents.titles.characters'), searchName: 'Characters', collectionName: '', referenceText: 'Character', canCreate: true, },
     { isFCB: true, type: ValidDocType.Location, keypress: localize('acm.documents.keys.locations'), title: localize('acm.documents.titles.locations'), searchName: 'Locations', collectionName: '', referenceText: 'Location', canCreate: true, },
     { isFCB: true, type: ValidDocType.Organization, keypress: localize('acm.documents.keys.organizations'), title: localize('acm.documents.titles.organizations'), searchName: 'Organizations', collectionName: '', referenceText: 'Organization', canCreate: true, },
+    { isFCB: true, type: ValidDocType.PC, keypress: localize('acm.documents.keys.pcs'), title: localize('acm.documents.titles.pcs'), searchName: 'PCs', collectionName: '', referenceText: 'PC', canCreate: false, },
     { isFCB: true, type: ValidDocType.World, keypress: localize('acm.documents.keys.worlds'), title: localize('acm.documents.titles.worlds'), searchName: 'Worlds', collectionName: '', referenceText: 'World', canCreate: false, },
     { isFCB: true, type: ValidDocType.Campaign, keypress: localize('acm.documents.keys.campaigns'), title: localize('acm.documents.titles.campaigns'), searchName: 'Campaigns', collectionName: '', referenceText: 'Campaign', canCreate: true, },
     { isFCB: true, type: ValidDocType.Session, keypress: localize('acm.documents.keys.sessions'), title: localize('acm.documents.titles.sessions'), searchName: 'Sessions', collectionName: '', referenceText: 'Session', canCreate: false, },
@@ -760,6 +761,9 @@ export class Autocompleter extends Application {
         case ValidDocType.Organization:
           results = await api.getEntries(api.TOPICS.Organization);
           break;
+        case ValidDocType.PC:
+          results = await api.getEntries(api.TOPICS.PC);
+          break;
         case ValidDocType.World:
           results = await api.getWorld();
           break;
@@ -833,8 +837,12 @@ export class Autocompleter extends Application {
     // convert any highlighted text into the manual label for the link
     const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
 
-    if (name)
-      this._insertTextAndClose(`@UUID[${uuid}]{${name}}`);
+    if (name) {
+      if (ModuleSettings.get(SettingKeys.addName))
+        this._insertTextAndClose(`@UUID[${uuid}]{${name}}`);
+      else
+        this._insertTextAndClose(`@UUID[${uuid}]`);
+    }
     else {
       const label = selectedTextInEditor ? `{${selectedTextInEditor}}` : '';
       this._insertTextAndClose(`@UUID[${uuid}]${label}`);

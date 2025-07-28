@@ -30,6 +30,7 @@ export enum ValidDocType {
   World,
   Campaign,
   Session,
+  PC
 }
 
 export enum EditorType {

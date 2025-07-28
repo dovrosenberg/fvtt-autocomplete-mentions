@@ -35,7 +35,7 @@
               Searching {{docType}} for '{{shownFilter}}'
             </li>
             <li><hr></li> 
-            <li class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}} {{#if noCreate}}disabled{{/if}}" data-acm-index="0">
+            <li v-if="!noCreate" class="acm-data-entry flexrow{{#if (eq 0 highlightedEntry)}} highlighted{{/if}}" data-acm-index="0">
               Create new...
             </li>
             {{#if searchingFromJournalPage}}
