@@ -18,6 +18,7 @@ async function init(): Promise<void> {
 // register the main listener
 function registerKeyListeners() {
   jQuery(document).on('keydown', '.ProseMirror.editor-content[contenteditable="true"]', { editorType: EditorType.ProseMirror }, onKeydown);
+  jQuery(document).on('keydown', '.fcb-advanced-text-area textarea', { editorType: EditorType.TextArea }, onKeydown);
 }
 
 async function onKeydown (event: JQuery.KeyDownEvent) {
@@ -35,7 +36,7 @@ async function activateAutocompleter (targetElement, editorType) {
   await autocompleter?.close();
 
   // Check if the editor is inside a div with .fcb-editor class
-  const isCampaignBuilderEditor = targetElement.closest && targetElement.closest('.fcb-editor') != null;
+  const isCampaignBuilderEditor = targetElement.closest && targetElement.closest('.fcb-editor, .fcb-advanced-text-area') != null;
   
   // Create a new autocompleter
   autocompleter = new Autocompleter(targetElement, editorType, () => {

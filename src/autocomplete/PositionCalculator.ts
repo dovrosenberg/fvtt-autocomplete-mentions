@@ -62,6 +62,11 @@ export class PositionCalculator {
    * Get the corrected cursor rectangle, handling zero-width edge cases
    */
   private _getCorrectedCursorRect(editor: HTMLElement): DOMRect | null {
+    // Textareas don't participate in document selection; compute caret rectangle manually.
+    if (this._isTextArea(editor)) {
+      return this._getTextAreaCaretRect(editor);
+    }
+
     const sel = editor.ownerDocument.getSelection();
     if (!sel || !sel.rangeCount) return null;
 
@@ -86,6 +91,97 @@ export class PositionCalculator {
     }
 
     return rect;
+  }
+
+  private _isTextArea(editor: HTMLElement): editor is HTMLTextAreaElement {
+    const win = editor.ownerDocument?.defaultView;
+    return !!win && editor instanceof win.HTMLTextAreaElement;
+  }
+
+  /**
+   * Compute a caret rectangle for a textarea using a hidden mirror element.
+   * Based on the common "textarea caret position" mirror technique.
+   */
+  private _getTextAreaCaretRect(textarea: HTMLTextAreaElement): DOMRect | null {
+    const doc = textarea.ownerDocument;
+    const win = doc.defaultView;
+    if (!win) return null;
+
+    const rect = textarea.getBoundingClientRect();
+    const start = textarea.selectionStart ?? 0;
+
+    // If for some reason we can't measure, fall back to the textarea's top-left.
+    const fallback = (): DOMRect => ({
+      left: rect.left,
+      top: rect.top,
+      right: rect.left,
+      bottom: rect.top + 16,
+      width: 0,
+      height: 16,
+      x: rect.left,
+      y: rect.top,
+      toJSON: () => ({})
+    } as DOMRect);
+
+    let mirror: HTMLDivElement | null = null;
+    try {
+      const cs = win.getComputedStyle(textarea);
+
+      mirror = doc.createElement('div');
+      mirror.setAttribute('aria-hidden', 'true');
+
+      // Position the mirror over the textarea so measurements are in the same coordinate space.
+      mirror.style.position = 'fixed';
+      mirror.style.left = `${rect.left}px`;
+      mirror.style.top = `${rect.top}px`;
+      mirror.style.width = cs.width;
+      mirror.style.height = cs.height;
+      mirror.style.overflow = 'auto';
+      mirror.style.visibility = 'hidden';
+      mirror.style.pointerEvents = 'none';
+      mirror.style.whiteSpace = 'pre-wrap';
+      mirror.style.wordWrap = 'break-word';
+
+      // Copy text rendering and box styles that affect layout.
+      const propsToCopy = [
+        'boxSizing',
+        'borderLeftWidth', 'borderRightWidth', 'borderTopWidth', 'borderBottomWidth',
+        'paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom',
+        'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+        'letterSpacing', 'textTransform', 'textIndent',
+        'lineHeight',
+        'tabSize',
+      ] as const;
+      for (const prop of propsToCopy) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mirror.style as any)[prop] = (cs as any)[prop];
+      }
+
+      // Ensure the text content wraps like the textarea.
+      mirror.style.borderStyle = 'solid';
+      mirror.style.borderColor = 'transparent';
+
+      // Populate content up to caret.
+      const before = textarea.value.substring(0, start);
+      mirror.textContent = before;
+
+      const marker = doc.createElement('span');
+      marker.textContent = '\u200b'; // zero-width marker
+      mirror.appendChild(marker);
+
+      doc.body.appendChild(mirror);
+
+      // Match scrolling so the caret rect corresponds to the visible caret.
+      mirror.scrollTop = textarea.scrollTop;
+      mirror.scrollLeft = textarea.scrollLeft;
+
+      const markerRect = marker.getBoundingClientRect();
+      return markerRect;
+    } catch {
+      return fallback();
+    } finally {
+      mirror?.remove();
+    }
   }
 
   /**

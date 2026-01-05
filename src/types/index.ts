@@ -35,7 +35,8 @@ export enum ValidDocType {
 
 export enum EditorType {
   ProseMirror,
-  TinyMCE
+  TinyMCE,
+  TextArea
 }
 
 export type DocumentType = (Actor | Scene | JournalEntry | RollTable | Item);

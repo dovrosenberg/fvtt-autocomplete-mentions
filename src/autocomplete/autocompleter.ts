@@ -85,6 +85,9 @@ export class Autocompleter extends Application {
   /** handles all positioning logic */
   private _positionCalculator = new PositionCalculator();
 
+  /** saved editor selection, used when dialogs steal focus */
+  private _savedSelection: { start: number; end: number; direction?: string } | Range | null = null;
+
   /////////////////////////////
   // status
   private _currentMode: AutocompleteMode;
@@ -134,6 +137,62 @@ export class Autocompleter extends Application {
     this._location = this._positionCalculator.calculateInitialPosition(this._editor) || { left: 0, top: 0 };
 
     void this.render();
+  }
+
+  private _asTextArea(): HTMLTextAreaElement | null {
+    const win = this._editor?.ownerDocument?.defaultView;
+    if (!win) return null;
+    return this._editor instanceof win.HTMLTextAreaElement ? (this._editor as HTMLTextAreaElement) : null;
+  }
+
+  private _getSelectedText(): string {
+    const textarea = this._asTextArea();
+    if (textarea) {
+      const start = textarea.selectionStart ?? 0;
+      const end = textarea.selectionEnd ?? start;
+      return textarea.value.substring(start, end);
+    }
+    return this._editor.ownerDocument.getSelection()?.toString() || '';
+  }
+
+  private _saveEditorSelection(): void {
+    const textarea = this._asTextArea();
+    if (textarea) {
+      this._savedSelection = {
+        start: textarea.selectionStart ?? 0,
+        end: textarea.selectionEnd ?? (textarea.selectionStart ?? 0),
+        direction: (textarea as any).selectionDirection,
+      };
+      return;
+    }
+
+    const selection = this._editor.ownerDocument.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    this._savedSelection = range;
+  }
+
+  private _restoreEditorSelection(): void {
+    if (!this._savedSelection) return;
+
+    const textarea = this._asTextArea();
+    if (textarea) {
+      if (this._savedSelection instanceof Range) return;
+
+      const { start, end, direction } = this._savedSelection;
+      textarea.focus();
+      try {
+        (textarea as any).setSelectionRange(start, end, direction);
+      } catch {
+        textarea.setSelectionRange(start, end);
+      }
+      return;
+    }
+
+    if (this._savedSelection instanceof Range) {
+      const selection = this._editor.ownerDocument.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(this._savedSelection);
+    }
   }
 
   static get defaultOptions(): ApplicationOptions {
@@ -383,7 +442,7 @@ export class Autocompleter extends Application {
         // if it's a regular character, update the filter string
         if (event.key.length===1) {
           // if the filter is the same as the default, we want to start a new search.
-          if (this._shownFilter === this._editor.ownerDocument.getSelection()?.toString()) {
+          if (this._shownFilter === this._getSelectedText()) {
             this._shownFilter = '';
           }
 
@@ -426,7 +485,7 @@ export class Autocompleter extends Application {
                   // reset search
                   this._lastJournalFilter = this._shownFilter;
                   this._shownFilter = (() => {
-                    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+                  const selectedTextInEditor = this._getSelectedText();
                     // If there is a selected text in the editor and it was not use as filter 
                     //    to select the journal, put back the selected text as filter for the page.
                     if (selectedTextInEditor &&
@@ -809,7 +868,7 @@ export class Autocompleter extends Application {
   private async _moveToDocSearch(docType: ValidDocType) {
     this._currentMode = AutocompleteMode.docSearch
     this._searchDocType = docType;
-    this._shownFilter = this._editor.ownerDocument.getSelection()?.toString() || '';
+    this._shownFilter = this._getSelectedText();
     this._focusedMenuKey = 0;
     this._searchingFromJournalPage = (docType === ValidDocType.Journal && this._currentDoc?.documentName === 'JournalEntryPage');
     
@@ -817,7 +876,7 @@ export class Autocompleter extends Application {
   }
   private _insertReferenceAndClose(uuid: string, name?: string): void {
     // convert any highlighted text into the manual label for the link
-    const selectedTextInEditor = this._editor.ownerDocument.getSelection()?.toString();
+    const selectedTextInEditor = this._getSelectedText();
 
     if (name) {
       if (ModuleSettings.get(SettingKeys.addName))
@@ -832,8 +891,22 @@ export class Autocompleter extends Application {
   }
 
   private _insertTextAndClose(text: string): void {
-    this._editor.focus();  
-    this._editor.ownerDocument.execCommand('insertText', false, text);
+    this._editor.focus();
+
+    const textarea = this._asTextArea();
+    if (textarea) {
+      const start = textarea.selectionStart ?? 0;
+      const end = textarea.selectionEnd ?? start;
+      textarea.setRangeText(text, start, end, 'end');
+      // Ensure reactive wrappers notice the change
+      try {
+        textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      } catch {
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else {
+      this._editor.ownerDocument.execCommand('insertText', false, text);
+    }
     void this.close();
   }
 
@@ -841,8 +914,7 @@ export class Autocompleter extends Application {
   private async _createFCBDocument(docTypeInfo: DocType): Promise<void> {
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
-    const selection = this._editor.ownerDocument.getSelection();
-    const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
+    this._saveEditorSelection();
 
     // in theory campaign-builder must be installed since we got here because we're in an fcb div... but 
     //    maybe some other module is conflicting
@@ -874,11 +946,8 @@ export class Autocompleter extends Application {
       }
 
       if (newItem) {
-        if (range) {
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-        }
-        this._insertReferenceAndClose(newItem.uuid, newItem.name);
+        this._restoreEditorSelection();
+        this._insertReferenceAndClose(newItem.uuid);
       }
 
     } catch (_e) {
@@ -935,8 +1004,7 @@ export class Autocompleter extends Application {
 
     // register the hook to catch after the document is made
     // we need to save the current editor selection because it goes away when the new boxes pop up
-    const selection = this._editor.ownerDocument.getSelection();
-    const range = selection?.rangeCount ? selection?.getRangeAt(0) : null;
+    this._saveEditorSelection();
 
     const cls = getDocumentClass(documentName) as any;
     cls.createDialog(data, options).then(async (result: DocumentType | null): void => {
@@ -955,10 +1023,7 @@ export class Autocompleter extends Application {
             await result.update({ name: this._shownFilter });
           }
         }
-        if (range) {
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-        }
+        this._restoreEditorSelection();
         this._insertReferenceAndClose(result.uuid);
       } else {
         // dialog was canceled; nothing to do      

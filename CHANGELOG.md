@@ -1,5 +1,11 @@
 # Change Log
 
+## v2.3.0 - Support for Campaign Builder 1.8.0
+![](https://img.shields.io/badge/release%20date-January%205%2C%202026-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.3.0/module.zip)
+
+- Support for Campaign Builder 1.8 - and specifically the ability to now use Autocomplete Mentions in grid text boxes (ex. lore, notes, etc.)
+
 ## v2.2.0 - Support for new PCs functionality coming in Campaign Builder 1.1.0
 ![](https://img.shields.io/badge/release%20date-July%2028%2C%202025-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.2.0/module.zip)
