@@ -1,5 +1,11 @@
 # Change Log
 
+## v2.4.0 - Support for dark mode
+![](https://img.shields.io/badge/release%20date-February%2021%2C%202026-blue)
+![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.4.0/module.zip)
+
+- Now readable in dark mode!
+
 ## v2.3.0 - Support for Campaign Builder 1.8.0
 ![](https://img.shields.io/badge/release%20date-January%205%2C%202026-blue)
 ![GitHub release](https://img.shields.io/github/downloads-pre/dovrosenberg/fvtt-autocomplete-mentions/v2.3.0/module.zip)

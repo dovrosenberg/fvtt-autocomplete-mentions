@@ -67,4 +67,18 @@
   }
 }
 
+// Dark mode styles
+body.theme-dark .acm-autocomplete {
+  background: #333333;
+  box-shadow: 0 0 5px #222222;
+
+  hr {
+    background: #555555;
+  }
+
+  ol.acm-list li.acm-data-entry.highlighted {
+    background: #55559944;
+  }
+}
+
 
