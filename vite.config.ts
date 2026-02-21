@@ -45,6 +45,7 @@ export default defineConfig({
       output: 'styles/style.css',
       sourceMap: true,
       watch: ['src/styles/*.scss'],
+      sass: require('sass'),
     }),    viteCommonjs(),
     envCompatible(),
     createHtmlPlugin({
